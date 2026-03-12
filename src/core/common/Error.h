@@ -57,6 +57,7 @@ enum class ErrorCode
     ImageWriteError,
     IsoParseError,
     InsufficientDiskSpace,
+    DecompressionFailed,
 
     // Security
     Fido2DeviceNotFound,

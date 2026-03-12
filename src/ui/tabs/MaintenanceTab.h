@@ -43,6 +43,10 @@ private slots:
     void onReinstallBootloader();
     void onSdScan();
     void onSdFix();
+    void onInstallGrub2();
+    void onInstallWindowsBM();
+    void onInstallSyslinux();
+    void onInstallRefind();
 
 private:
     void setupUi();
@@ -67,6 +71,16 @@ private:
     QPushButton* m_bootloaderBtn = nullptr;
     QProgressBar* m_bootProgress = nullptr;
     QLabel* m_bootStatusLabel = nullptr;
+
+    // Bootloader Install
+    QComboBox* m_blDiskCombo = nullptr;
+    QComboBox* m_blPartCombo = nullptr;
+    QPushButton* m_grub2Btn = nullptr;
+    QPushButton* m_winbmBtn = nullptr;
+    QPushButton* m_syslinuxBtn = nullptr;
+    QPushButton* m_refindBtn = nullptr;
+    QProgressBar* m_blProgress = nullptr;
+    QLabel* m_blStatusLabel = nullptr;
 
     // SD Card Recovery
     QComboBox* m_sdCardCombo = nullptr;

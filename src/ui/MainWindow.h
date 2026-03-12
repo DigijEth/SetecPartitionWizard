@@ -18,6 +18,11 @@ class ImagingTab;
 class DiagnosticsTab;
 class SecurityTab;
 class MaintenanceTab;
+class SdCardTab;
+class VirtualDiskTab;
+class NonWindowsFsTab;
+class LinuxFlasherTab;
+class KaliCreatorTab;
 
 class MainWindow : public QMainWindow
 {
@@ -43,6 +48,7 @@ private:
 private slots:
     void onAbout();
     void onRefreshDisks();
+    void onUnlockFeatures();
     void onStatusMessage(const QString& msg);
 
 private:
@@ -56,6 +62,11 @@ private:
     DiagnosticsTab* m_diagnosticsTab = nullptr;
     SecurityTab* m_securityTab = nullptr;
     MaintenanceTab* m_maintenanceTab = nullptr;
+    SdCardTab* m_sdCardTab = nullptr;
+    VirtualDiskTab* m_virtualDiskTab = nullptr;
+    NonWindowsFsTab* m_nonWinFsTab = nullptr;
+    LinuxFlasherTab* m_linuxFlasherTab = nullptr;
+    KaliCreatorTab* m_kaliCreatorTab = nullptr;
 
     // Hardware diagnostics module (vendor library)
     QWidget* m_hwdiagPanel = nullptr;

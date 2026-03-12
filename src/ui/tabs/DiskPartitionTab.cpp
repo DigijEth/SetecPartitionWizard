@@ -86,7 +86,7 @@ void DiskPartitionTab::setupUi()
     m_diskTree->setModel(m_diskTreeModel);
     m_diskTree->setHeaderHidden(false);
     m_diskTree->setAlternatingRowColors(true);
-    m_diskTree->setMinimumWidth(280);
+    m_diskTree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_diskTree->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_diskTree->setSelectionMode(QAbstractItemView::SingleSelection);
     leftLayout->addWidget(m_diskTree);
@@ -142,7 +142,7 @@ void DiskPartitionTab::setupUi()
     opLayout->addWidget(opLabel);
 
     m_operationListWidget = new QListWidget();
-    m_operationListWidget->setMinimumWidth(220);
+    m_operationListWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     opLayout->addWidget(m_operationListWidget);
 
     auto* buttonLayout = new QHBoxLayout();
@@ -456,8 +456,56 @@ void DiskPartitionTab::onCreatePartition()
     sizeGbSpin->setValue(1.0);
     form->addRow(tr("Size:"), sizeGbSpin);
 
+    // Full filesystem list — label + corresponding enum value kept in sync
+    struct FsEntry { const char* label; FilesystemType type; };
+    static const FsEntry kCreateFsEntries[] = {
+        // ── Windows / Modern ──
+        { "NTFS",                        FilesystemType::NTFS        },
+        { "FAT32",                       FilesystemType::FAT32       },
+        { "FAT16",                       FilesystemType::FAT16       },
+        { "FAT12  (floppy / tiny)",      FilesystemType::FAT12       },
+        { "exFAT  (flash / large SD)",   FilesystemType::ExFAT       },
+        { "ReFS   (Windows Server)",     FilesystemType::ReFS        },
+        // ── Linux ──
+        { "ext4",                        FilesystemType::Ext4        },
+        { "ext3",                        FilesystemType::Ext3        },
+        { "ext2",                        FilesystemType::Ext2        },
+        { "Btrfs",                       FilesystemType::Btrfs       },
+        { "XFS",                         FilesystemType::XFS         },
+        { "ZFS",                         FilesystemType::ZFS         },
+        { "JFS",                         FilesystemType::JFS         },
+        { "ReiserFS",                    FilesystemType::ReiserFS    },
+        { "F2FS   (flash-optimised)",    FilesystemType::F2FS        },
+        { "JFFS2  (embedded flash)",     FilesystemType::JFFS2       },
+        { "NILFS2",                      FilesystemType::NILFS2      },
+        { "Linux Swap",                  FilesystemType::SWAP_LINUX  },
+        // ── Apple ──
+        { "HFS+   (Mac OS Extended)",    FilesystemType::HFSPlus     },
+        { "HFS    (Classic Mac OS)",     FilesystemType::HFS         },
+        { "APFS   (detection only)",     FilesystemType::APFS        },
+        // ── Unix / BSD ──
+        { "UFS    (BSD / Solaris)",      FilesystemType::UFS         },
+        // ── Legacy / Retro ──
+        { "HPFS   (OS/2)",              FilesystemType::HPFS        },
+        { "VFAT   (long-name FAT)",     FilesystemType::VFAT        },
+        { "UDF    (optical / universal)",FilesystemType::UDF         },
+        { "ISO 9660 (CD-ROM)",          FilesystemType::ISO9660     },
+        { "Minix",                      FilesystemType::Minix       },
+        { "QNX4",                       FilesystemType::QNX4        },
+        { "Amiga FFS",                  FilesystemType::AfFS        },
+        { "BeOS BFS",                   FilesystemType::BFS_BeOS    },
+        { "SquashFS (read-only)",       FilesystemType::SquashFS    },
+        { "RomFS   (read-only)",        FilesystemType::RomFS       },
+        // ── Console / Gaming ──
+        { "FATX    (Xbox / Xbox 360)",  FilesystemType::FATX        },
+        // ── Raw / unformatted ──
+        { "Unformatted / Raw",          FilesystemType::Raw         },
+    };
+    constexpr int kCreateFsCount = static_cast<int>(std::size(kCreateFsEntries));
+
     auto* fsCombo = new QComboBox();
-    fsCombo->addItems({tr("NTFS"), tr("FAT32"), tr("exFAT"), tr("ext4"), tr("ext3"), tr("ext2")});
+    for (int i = 0; i < kCreateFsCount; ++i)
+        fsCombo->addItem(QString::fromLatin1(kCreateFsEntries[i].label));
     form->addRow(tr("Filesystem:"), fsCombo);
 
     auto* labelEdit = new QLineEdit();
@@ -476,9 +524,8 @@ void DiskPartitionTab::onCreatePartition()
     uint32_t sectorSize = diskInfo->sectorSize;
     SectorCount sectors = sizeBytes / sectorSize;
 
-    // Find first large enough gap
+    // Find first large enough gap — simple: offset after last partition
     SectorOffset startLba = DEFAULT_ALIGNMENT_SECTORS_512;
-    // Simple: use offset after last partition
     for (const auto& p : m_snapshot.partitions)
     {
         if (p.diskId == m_selectedDiskId)
@@ -496,16 +543,9 @@ void DiskPartitionTab::onCreatePartition()
     params.sectorSize = sectorSize;
     params.formatAfter = true;
 
-    // Map filesystem selection
-    static const FilesystemType fsTypes[] = {
-        FilesystemType::NTFS, FilesystemType::FAT32, FilesystemType::ExFAT,
-        FilesystemType::Ext4, FilesystemType::Ext3, FilesystemType::Ext2
-    };
     int fsIdx = fsCombo->currentIndex();
-    if (fsIdx >= 0 && fsIdx < static_cast<int>(std::size(fsTypes)))
-    {
-        params.formatOptions.targetFs = fsTypes[fsIdx];
-    }
+    if (fsIdx >= 0 && fsIdx < kCreateFsCount)
+        params.formatOptions.targetFs = kCreateFsEntries[fsIdx].type;
     params.formatOptions.volumeLabel = labelEdit->text().toStdString();
     params.formatOptions.quickFormat = true;
 
@@ -618,8 +658,52 @@ void DiskPartitionTab::onFormatPartition()
     dlg.setWindowTitle(tr("Format Partition"));
     auto* form = new QFormLayout(&dlg);
 
+    struct FmtEntry { const char* label; FilesystemType type; };
+    static const FmtEntry kFmtFsEntries[] = {
+        // ── Windows / Modern ──
+        { "NTFS",                        FilesystemType::NTFS        },
+        { "FAT32",                       FilesystemType::FAT32       },
+        { "FAT16",                       FilesystemType::FAT16       },
+        { "FAT12  (floppy / tiny)",      FilesystemType::FAT12       },
+        { "exFAT  (flash / large SD)",   FilesystemType::ExFAT       },
+        { "ReFS   (Windows Server)",     FilesystemType::ReFS        },
+        // ── Linux ──
+        { "ext4",                        FilesystemType::Ext4        },
+        { "ext3",                        FilesystemType::Ext3        },
+        { "ext2",                        FilesystemType::Ext2        },
+        { "Btrfs",                       FilesystemType::Btrfs       },
+        { "XFS",                         FilesystemType::XFS         },
+        { "ZFS",                         FilesystemType::ZFS         },
+        { "JFS",                         FilesystemType::JFS         },
+        { "ReiserFS",                    FilesystemType::ReiserFS    },
+        { "F2FS   (flash-optimised)",    FilesystemType::F2FS        },
+        { "JFFS2  (embedded flash)",     FilesystemType::JFFS2       },
+        { "NILFS2",                      FilesystemType::NILFS2      },
+        { "Linux Swap",                  FilesystemType::SWAP_LINUX  },
+        // ── Apple ──
+        { "HFS+   (Mac OS Extended)",    FilesystemType::HFSPlus     },
+        { "HFS    (Classic Mac OS)",     FilesystemType::HFS         },
+        // ── Unix / BSD ──
+        { "UFS    (BSD / Solaris)",      FilesystemType::UFS         },
+        // ── Legacy / Retro ──
+        { "HPFS   (OS/2)",              FilesystemType::HPFS        },
+        { "VFAT   (long-name FAT)",     FilesystemType::VFAT        },
+        { "UDF    (optical)",           FilesystemType::UDF         },
+        { "ISO 9660 (CD-ROM)",          FilesystemType::ISO9660     },
+        { "Minix",                      FilesystemType::Minix       },
+        { "QNX4",                       FilesystemType::QNX4        },
+        { "Amiga FFS",                  FilesystemType::AfFS        },
+        { "BeOS BFS",                   FilesystemType::BFS_BeOS    },
+        { "SquashFS (read-only)",       FilesystemType::SquashFS    },
+        { "RomFS   (read-only)",        FilesystemType::RomFS       },
+        // ── Console / Gaming ──
+        { "FATX    (Xbox / Xbox 360)",  FilesystemType::FATX        },
+    };
+    constexpr int kFmtFsCount = static_cast<int>(std::size(kFmtFsEntries));
+
     auto* fsCombo = new QComboBox();
-    fsCombo->addItems({tr("NTFS"), tr("FAT32"), tr("exFAT"), tr("ext4"), tr("ext3"), tr("ext2"), tr("Linux Swap")});
+    for (int i = 0; i < kFmtFsCount; ++i)
+        fsCombo->addItem(QString::fromLatin1(kFmtFsEntries[i].label));
     form->addRow(tr("Filesystem:"), fsCombo);
 
     auto* labelEdit = new QLineEdit();
@@ -637,12 +721,6 @@ void DiskPartitionTab::onFormatPartition()
     if (dlg.exec() != QDialog::Accepted)
         return;
 
-    static const FilesystemType fsTypes[] = {
-        FilesystemType::NTFS, FilesystemType::FAT32, FilesystemType::ExFAT,
-        FilesystemType::Ext4, FilesystemType::Ext3, FilesystemType::Ext2,
-        FilesystemType::SWAP_LINUX
-    };
-
     FormatPartitionOp::Params params;
     params.diskId = m_selectedDiskId;
     params.partitionIndex = partIdx;
@@ -659,8 +737,8 @@ void DiskPartitionTab::onFormatPartition()
     }
 
     int fsIdx = fsCombo->currentIndex();
-    if (fsIdx >= 0 && fsIdx < static_cast<int>(std::size(fsTypes)))
-        params.options.targetFs = fsTypes[fsIdx];
+    if (fsIdx >= 0 && fsIdx < kFmtFsCount)
+        params.options.targetFs = kFmtFsEntries[fsIdx].type;
 
     params.options.volumeLabel = labelEdit->text().toStdString();
     params.options.quickFormat = quickCheck->isChecked();

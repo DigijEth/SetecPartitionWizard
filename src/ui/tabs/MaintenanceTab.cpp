@@ -8,6 +8,8 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCoreApplication>
+#include <QDir>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -15,6 +17,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QSpinBox>
@@ -36,7 +39,12 @@ void MaintenanceTab::setupUi()
 {
     auto* layout = new QVBoxLayout(this);
 
-    // ===== Secure Erase Section =====
+    auto* innerTabs = new QTabWidget();
+
+    // ===== Tab 1: Secure Erase =====
+    auto* eraseWidget = new QWidget();
+    auto* eraseOuterLayout = new QVBoxLayout(eraseWidget);
+
     auto* eraseGroup = new QGroupBox(tr("Secure Erase"));
     auto* eraseLayout = new QGridLayout(eraseGroup);
 
@@ -79,7 +87,6 @@ void MaintenanceTab::setupUi()
     // BIG RED erase button
     m_eraseBtn = new QPushButton(tr("SECURE ERASE"));
     m_eraseBtn->setObjectName("cancelButton");
-    m_eraseBtn->setMinimumHeight(50);
     m_eraseBtn->setStyleSheet(
         "QPushButton { background-color: #cc0000; color: white; font-size: 16px; "
         "font-weight: bold; border: 2px solid #880000; border-radius: 6px; }"
@@ -89,9 +96,14 @@ void MaintenanceTab::setupUi()
     connect(m_eraseBtn, &QPushButton::clicked, this, &MaintenanceTab::onSecureErase);
     eraseLayout->addWidget(m_eraseBtn, 6, 0, 1, 3);
 
-    layout->addWidget(eraseGroup);
+    eraseOuterLayout->addWidget(eraseGroup);
+    eraseOuterLayout->addStretch();
+    innerTabs->addTab(eraseWidget, tr("Secure Erase"));
 
-    // ===== Boot Repair Section =====
+    // ===== Tab 2: Boot Repair =====
+    auto* bootWidget = new QWidget();
+    auto* bootOuterLayout = new QVBoxLayout(bootWidget);
+
     auto* bootGroup = new QGroupBox(tr("Boot Repair"));
     auto* bootLayout = new QVBoxLayout(bootGroup);
 
@@ -137,9 +149,91 @@ void MaintenanceTab::setupUi()
     m_bootStatusLabel->setWordWrap(true);
     bootLayout->addWidget(m_bootStatusLabel);
 
-    layout->addWidget(bootGroup);
+    bootOuterLayout->addWidget(bootGroup);
+    bootOuterLayout->addStretch();
+    innerTabs->addTab(bootWidget, tr("Boot Repair"));
 
-    // ===== SD Card Recovery Section =====
+    // ===== Tab 3: Bootloader Install =====
+    auto* blWidget = new QWidget();
+    auto* blOuterLayout = new QVBoxLayout(blWidget);
+
+    auto* blGroup = new QGroupBox(tr("Bootloader Installation"));
+    auto* blLayout = new QVBoxLayout(blGroup);
+
+    auto* blInfo = new QLabel(
+        tr("Install a bootloader to the selected disk or partition. "
+           "Requires the target disk to have a valid partition and filesystem. "
+           "Run as Administrator."));
+    blInfo->setWordWrap(true);
+    blLayout->addWidget(blInfo);
+
+    auto* blDiskRow = new QHBoxLayout();
+    blDiskRow->addWidget(new QLabel(tr("Target Disk:")));
+    m_blDiskCombo = new QComboBox();
+    blDiskRow->addWidget(m_blDiskCombo, 1);
+    blLayout->addLayout(blDiskRow);
+
+    auto* blPartRow = new QHBoxLayout();
+    blPartRow->addWidget(new QLabel(tr("Drive Letter:")));
+    m_blPartCombo = new QComboBox();
+    // Populate with available drive letters
+    for (char c = 'A'; c <= 'Z'; ++c)
+    {
+        QString path = QString("%1:\\").arg(c);
+        if (QDir(path).exists())
+            m_blPartCombo->addItem(QString("%1:").arg(c));
+    }
+    blPartRow->addWidget(m_blPartCombo, 1);
+    blLayout->addLayout(blPartRow);
+
+    // Four bootloader buttons in a 2x2 grid
+    auto* blBtnGrid = new QGridLayout();
+
+    m_grub2Btn = new QPushButton(tr("Install GRUB2"));
+    m_grub2Btn->setToolTip(tr("GNU GRUB 2 — the most common Linux bootloader.\n"
+                               "Requires grub-install to be on PATH (from WSL or a GRUB package)."));
+    connect(m_grub2Btn, &QPushButton::clicked, this, &MaintenanceTab::onInstallGrub2);
+    blBtnGrid->addWidget(m_grub2Btn, 0, 0);
+
+    m_winbmBtn = new QPushButton(tr("Install Windows Boot Manager"));
+    m_winbmBtn->setToolTip(tr("Reinstall the Windows Boot Manager using bcdboot.exe.\n"
+                               "The selected drive letter should be the Windows partition (usually C:)."));
+    connect(m_winbmBtn, &QPushButton::clicked, this, &MaintenanceTab::onInstallWindowsBM);
+    blBtnGrid->addWidget(m_winbmBtn, 0, 1);
+
+    m_syslinuxBtn = new QPushButton(tr("Install SYSLINUX"));
+    m_syslinuxBtn->setToolTip(tr("SYSLINUX — lightweight bootloader for FAT/FAT32 partitions.\n"
+                                  "Used for bootable USB drives and rescue media.\n"
+                                  "Requires syslinux.exe on PATH."));
+    connect(m_syslinuxBtn, &QPushButton::clicked, this, &MaintenanceTab::onInstallSyslinux);
+    blBtnGrid->addWidget(m_syslinuxBtn, 1, 0);
+
+    m_refindBtn = new QPushButton(tr("Install rEFInd"));
+    m_refindBtn->setToolTip(tr("rEFInd — graphical UEFI boot manager that auto-detects bootloaders.\n"
+                                "Great for dual-boot and recovery setups.\n"
+                                "Requires refind-install or the rEFInd binaries to be on PATH."));
+    connect(m_refindBtn, &QPushButton::clicked, this, &MaintenanceTab::onInstallRefind);
+    blBtnGrid->addWidget(m_refindBtn, 1, 1);
+
+    blLayout->addLayout(blBtnGrid);
+
+    m_blProgress = new QProgressBar();
+    m_blProgress->setRange(0, 0); // Indeterminate
+    m_blProgress->setVisible(false);
+    blLayout->addWidget(m_blProgress);
+
+    m_blStatusLabel = new QLabel();
+    m_blStatusLabel->setWordWrap(true);
+    blLayout->addWidget(m_blStatusLabel);
+
+    blOuterLayout->addWidget(blGroup);
+    blOuterLayout->addStretch();
+    innerTabs->addTab(blWidget, tr("Bootloader Install"));
+
+    // ===== Tab 4: SD Card Recovery =====
+    auto* sdWidget = new QWidget();
+    auto* sdOuterLayout = new QVBoxLayout(sdWidget);
+
     auto* sdGroup = new QGroupBox(tr("SD Card Recovery"));
     auto* sdLayout = new QGridLayout(sdGroup);
 
@@ -173,7 +267,6 @@ void MaintenanceTab::setupUi()
     sdLayout->addWidget(m_sdLabelEdit, 3, 1, 1, 2);
 
     m_sdFixBtn = new QPushButton(tr("Fix SD Card"));
-    m_sdFixBtn->setMinimumHeight(40);
     m_sdFixBtn->setStyleSheet(
         "QPushButton { background-color: #d4a574; color: #1e1e2e; font-size: 14px; "
         "font-weight: bold; border: 2px solid #b08050; border-radius: 6px; }"
@@ -191,8 +284,11 @@ void MaintenanceTab::setupUi()
     m_sdStatusLabel->setWordWrap(true);
     sdLayout->addWidget(m_sdStatusLabel, 6, 0, 1, 3);
 
-    layout->addWidget(sdGroup);
-    layout->addStretch();
+    sdOuterLayout->addWidget(sdGroup);
+    sdOuterLayout->addStretch();
+    innerTabs->addTab(sdWidget, tr("SD Card Recovery"));
+
+    layout->addWidget(innerTabs);
 }
 
 void MaintenanceTab::refreshDisks(const SystemDiskSnapshot& snapshot)
@@ -205,6 +301,7 @@ void MaintenanceTab::populateDiskCombo()
 {
     m_eraseDiskCombo->clear();
     m_bootDiskCombo->clear();
+    m_blDiskCombo->clear();
 
     for (const auto& disk : m_snapshot.disks)
     {
@@ -214,6 +311,7 @@ void MaintenanceTab::populateDiskCombo()
                             .arg(formatSize(disk.sizeBytes));
         m_eraseDiskCombo->addItem(label, disk.id);
         m_bootDiskCombo->addItem(label, disk.id);
+        m_blDiskCombo->addItem(label, disk.id);
     }
 }
 
@@ -660,6 +758,238 @@ void MaintenanceTab::onSdFix()
         emit statusMessage(tr("SD card fix completed"));
     });
 
+    thread->start();
+}
+
+// ============================================================================
+// Bootloader installation helpers
+// ============================================================================
+
+// Run a command invisibly and return {stdout+stderr, exitCode}
+static std::pair<QString, int> runCommand(const QString& program, const QStringList& args)
+{
+    QProcess proc;
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start(program, args);
+    if (!proc.waitForStarted(5000))
+        return {QString("Failed to start: %1").arg(program), -1};
+    proc.waitForFinished(120000); // 2 min max
+    return {QString::fromLocal8Bit(proc.readAll()), proc.exitCode()};
+}
+
+void MaintenanceTab::onInstallGrub2()
+{
+    int diskId = m_blDiskCombo->currentData().toInt();
+    QString driveLetter = m_blPartCombo->currentText().left(1);
+
+    auto reply = QMessageBox::question(this, tr("Install GRUB2"),
+        tr("Install GNU GRUB 2 to Disk %1?\n\n"
+           "This will write GRUB2 boot code to the MBR and install\n"
+           "GRUB modules to the %2: partition.\n\n"
+           "Requirements: grub-install must be on PATH (from WSL2 or Cygwin).\n\n"
+           "Continue?").arg(diskId).arg(driveLetter),
+        QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes) return;
+
+    m_blProgress->setVisible(true);
+    m_blStatusLabel->setText(tr("Installing GRUB2..."));
+    m_grub2Btn->setEnabled(false);
+
+    auto* thread = QThread::create([this, diskId, driveLetter]() {
+        // Try grub-install via WSL path first, then native if available
+        QString diskPath = QString("\\\\.\\PhysicalDrive%1").arg(diskId);
+        QString mountPoint = QString("/mnt/%1").arg(driveLetter.toLower());
+
+        // WSL path: grub-install through wsl.exe
+        auto [wslOut, wslCode] = runCommand("wsl.exe",
+            {"grub-install", "--target=i386-pc",
+             QString("--boot-directory=%1/boot").arg(mountPoint),
+             QString("/dev/sd%1").arg(char('a' + diskId))});
+
+        QString msg;
+        if (wslCode == 0)
+            msg = tr("✓ GRUB2 installed successfully via WSL.\n") + wslOut;
+        else
+        {
+            // Try native grub-install
+            auto [natOut, natCode] = runCommand("grub-install",
+                {"--target=i386-pc",
+                 QString("--boot-directory=%1:\\boot").arg(driveLetter),
+                 QString("\\\\.\\PhysicalDrive%1").arg(diskId)});
+            if (natCode == 0)
+                msg = tr("✓ GRUB2 installed successfully.\n") + natOut;
+            else
+                msg = tr("✗ GRUB2 install failed.\n\n"
+                         "Make sure grub-install is installed (WSL2 recommended).\n"
+                         "WSL output:\n") + wslOut + "\n\nNative output:\n" + natOut;
+        }
+
+        QMetaObject::invokeMethod(m_blStatusLabel, "setText",
+            Qt::QueuedConnection, Q_ARG(QString, msg));
+    });
+
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    connect(thread, &QThread::finished, this, [this]() {
+        m_blProgress->setVisible(false);
+        m_grub2Btn->setEnabled(true);
+        emit statusMessage(tr("GRUB2 install complete"));
+    });
+    thread->start();
+}
+
+void MaintenanceTab::onInstallWindowsBM()
+{
+    QString driveLetter = m_blPartCombo->currentText().left(1);
+
+    auto reply = QMessageBox::question(this, tr("Install Windows Boot Manager"),
+        tr("Reinstall the Windows Boot Manager to %1:?\n\n"
+           "This runs: bcdboot %2:\\Windows /s %2:\n\n"
+           "The selected drive should be your Windows partition (usually C:).\n\n"
+           "Continue?").arg(driveLetter).arg(driveLetter),
+        QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes) return;
+
+    m_blProgress->setVisible(true);
+    m_blStatusLabel->setText(tr("Installing Windows Boot Manager..."));
+    m_winbmBtn->setEnabled(false);
+
+    auto* thread = QThread::create([this, driveLetter]() {
+        // bcdboot copies boot files and rebuilds BCD
+        QString windowsDir = QString("%1:\\Windows").arg(driveLetter);
+        auto [out, code] = runCommand("bcdboot.exe",
+            {windowsDir, "/s", QString("%1:").arg(driveLetter), "/f", "ALL"});
+
+        QString msg = (code == 0)
+            ? tr("✓ Windows Boot Manager installed successfully.\n") + out
+            : tr("✗ bcdboot failed (exit %1).\n").arg(code) + out +
+              tr("\n\nEnsure the drive contains a valid Windows installation.");
+
+        QMetaObject::invokeMethod(m_blStatusLabel, "setText",
+            Qt::QueuedConnection, Q_ARG(QString, msg));
+    });
+
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    connect(thread, &QThread::finished, this, [this]() {
+        m_blProgress->setVisible(false);
+        m_winbmBtn->setEnabled(true);
+        emit statusMessage(tr("Windows Boot Manager install complete"));
+    });
+    thread->start();
+}
+
+void MaintenanceTab::onInstallSyslinux()
+{
+    QString driveLetter = m_blPartCombo->currentText().left(1);
+
+    auto reply = QMessageBox::question(this, tr("Install SYSLINUX"),
+        tr("Install SYSLINUX to %1:?\n\n"
+           "SYSLINUX is a lightweight bootloader for FAT/FAT32 partitions.\n"
+           "It is commonly used for bootable USB drives and rescue media.\n\n"
+           "Requirements: syslinux.exe must be on PATH or in the app directory.\n\n"
+           "Continue?").arg(driveLetter),
+        QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes) return;
+
+    m_blProgress->setVisible(true);
+    m_blStatusLabel->setText(tr("Installing SYSLINUX..."));
+    m_syslinuxBtn->setEnabled(false);
+
+    auto* thread = QThread::create([this, driveLetter]() {
+        // syslinux -m -a X:  installs MBR + marks partition active
+        auto [out, code] = runCommand("syslinux.exe",
+            {"-m", "-a", QString("%1:").arg(driveLetter)});
+
+        QString msg = (code == 0)
+            ? tr("✓ SYSLINUX installed to %1:.\n").arg(driveLetter) + out
+            : tr("✗ SYSLINUX install failed (exit %1).\n").arg(code) + out +
+              tr("\n\nEnsure syslinux.exe is available (download from syslinux.org) "
+                 "and the partition is FAT/FAT32.");
+
+        QMetaObject::invokeMethod(m_blStatusLabel, "setText",
+            Qt::QueuedConnection, Q_ARG(QString, msg));
+    });
+
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    connect(thread, &QThread::finished, this, [this]() {
+        m_blProgress->setVisible(false);
+        m_syslinuxBtn->setEnabled(true);
+        emit statusMessage(tr("SYSLINUX install complete"));
+    });
+    thread->start();
+}
+
+void MaintenanceTab::onInstallRefind()
+{
+    QString driveLetter = m_blPartCombo->currentText().left(1);
+
+    auto reply = QMessageBox::question(this, tr("Install rEFInd"),
+        tr("Install rEFInd EFI boot manager to %1:?\n\n"
+           "rEFInd is a graphical UEFI boot manager that automatically detects\n"
+           "installed operating systems and bootloaders.\n\n"
+           "Requirements:\n"
+           "  • The partition must be your EFI System Partition (ESP)\n"
+           "  • refind-install must be on PATH, OR the rEFInd binaries\n"
+           "    (refind_x64.efi, etc.) must be present in the app directory.\n\n"
+           "Continue?").arg(driveLetter),
+        QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes) return;
+
+    m_blProgress->setVisible(true);
+    m_blStatusLabel->setText(tr("Installing rEFInd..."));
+    m_refindBtn->setEnabled(false);
+
+    auto* thread = QThread::create([this, driveLetter]() {
+        QString efiDir = QString("%1:\\EFI\\refind").arg(driveLetter);
+
+        // Try refind-install first
+        auto [out1, code1] = runCommand("refind-install",
+            {"--usedefault", QString("%1:\\").arg(driveLetter)});
+
+        if (code1 == 0)
+        {
+            QMetaObject::invokeMethod(m_blStatusLabel, "setText",
+                Qt::QueuedConnection,
+                Q_ARG(QString, tr("✓ rEFInd installed via refind-install.\n") + out1));
+            return;
+        }
+
+        // Manual copy fallback: look for refind_x64.efi next to our exe
+        QString exeDir = QCoreApplication::applicationDirPath();
+        QString refindEfi = exeDir + "/refind_x64.efi";
+        if (QFile::exists(refindEfi))
+        {
+            QDir().mkpath(efiDir);
+            bool ok = QFile::copy(refindEfi, efiDir + "/refind_x64.efi");
+            // Also copy config if present
+            QString refindConf = exeDir + "/refind.conf";
+            if (QFile::exists(refindConf))
+                QFile::copy(refindConf, efiDir + "/refind.conf");
+
+            QString msg = ok
+                ? tr("✓ rEFInd EFI binary copied to %1.\n"
+                     "You may need to register it with your UEFI using efibootmgr or bcdedit.").arg(efiDir)
+                : tr("✗ Failed to copy rEFInd to %1.").arg(efiDir);
+            QMetaObject::invokeMethod(m_blStatusLabel, "setText",
+                Qt::QueuedConnection, Q_ARG(QString, msg));
+        }
+        else
+        {
+            QMetaObject::invokeMethod(m_blStatusLabel, "setText",
+                Qt::QueuedConnection,
+                Q_ARG(QString,
+                    tr("✗ rEFInd not found.\n\n"
+                       "Download rEFInd from www.rodsbooks.com/refind/ and place\n"
+                       "refind_x64.efi next to SetecPartitionWizard.exe, then retry.\n\n"
+                       "refind-install output:\n") + out1));
+        }
+    });
+
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    connect(thread, &QThread::finished, this, [this]() {
+        m_blProgress->setVisible(false);
+        m_refindBtn->setEnabled(true);
+        emit statusMessage(tr("rEFInd install complete"));
+    });
     thread->start();
 }
 

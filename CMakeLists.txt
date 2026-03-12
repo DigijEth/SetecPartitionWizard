@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(SetecPartitionWizard VERSION 1.0.0 LANGUAGES CXX)
+project(SetecPartitionWizard VERSION 1.0.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,7 +11,7 @@ set(CMAKE_AUTOUIC ON)
 add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 
 # Find Qt6
-find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Core Network)
 
 # CMake helpers
 include(cmake/CompilerWarnings.cmake)

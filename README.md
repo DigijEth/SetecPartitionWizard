@@ -59,6 +59,19 @@ RVZ/WIA (Dolphin Wii), WUA (Cemu Wii U), WBFS (Wii Backup), NRG (Nero), MDF (Alc
 - **Disk cloning** — sector-by-sector or smart clone (skips unallocated space)
 - **Checksum verification** — SHA-256, MD5, and CRC32 on all imaging operations
 
+### Linux Flasher
+- **Built-in image catalog** — Raspberry Pi OS, Ubuntu, Debian, Fedora, Kali, DietPi, Alpine, Arch Linux ARM
+- **One-click download & flash** — download, decompress, and flash in a single pipeline
+- **Decompression support** — .xz (streaming via xz-embedded), .gz (zlib), .zip, .7z (via 7-Zip)
+- **Resume support** — resume interrupted downloads automatically
+- **Custom images** — flash any local .img/.iso file or paste a download URL
+
+### Kali Creator
+- **USB/SD Card** — download and flash any Kali variant (Installer, Live, ARM) with optional persistence partition
+- **Virtual Machine** — create QCOW2/VMDK/VDI/VHDX disks or download pre-built VMware/VirtualBox/Hyper-V VMs
+- **Containers** — pull `kalilinux/kali-rolling` via Docker or Podman with live log output
+- **Cloud Image** — download official Kali cloud images (Raw, QCOW2, OVA)
+
 ### S.M.A.R.T. & Diagnostics
 - **S.M.A.R.T. monitoring** for both ATA and NVMe drives — read all attributes, thresholds, and health status
 - **Disk benchmarks** — sequential and random read/write, queue depth 1 and 32
@@ -153,11 +166,21 @@ src/
 
 ---
 
-## A Note for the Curious
+## Unlocking the Secret Menu
+
+There's a hidden pentesting/diagnostics tab behind a puzzle. Two ways to unlock it:
+
+### The Easy Way
+1. Go to **Tools → Unlock Features...**
+2. Select the file `tools/unlock.key` (included in the repo)
+
+### The Hard Way
+1. Press **F5** while the app is running
+2. Survive the AstroChicken calibration
+3. Complete the Vohaul telemetry sequence
+4. Pass the Arnoid sensor authentication gate
 
 > *"Don't forget to look UP UP at space."*
-
-Press **F5** while the application is running. Something unexpected happens.
 
 A riddle. A dark void. And a very particular file that ships with every build — one that looks like garbage in a hex editor, but says something in a text editor. Find it. Read it. Then find the file that only *your* build can produce.
 

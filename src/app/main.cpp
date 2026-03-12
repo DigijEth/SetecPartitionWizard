@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QMessageBox>
+#include <QPalette>
 #include <QStandardPaths>
 #include <QString>
 
@@ -50,6 +51,49 @@ static bool relaunchAsAdmin()
 #else
     return false;
 #endif
+}
+
+static void applyDarkPalette(QApplication& app)
+{
+    // Set the application palette so every widget — including QProgressDialog,
+    // QMessageBox, QInputDialog, and other system-rendered popups — gets the
+    // correct dark background and white text regardless of stylesheets.
+    QPalette p;
+
+    // Background roles
+    p.setColor(QPalette::Window,          QColor(0x1e, 0x1e, 0x2e));
+    p.setColor(QPalette::WindowText,      QColor(0xff, 0xff, 0xff));
+    p.setColor(QPalette::Base,            QColor(0x18, 0x18, 0x25));
+    p.setColor(QPalette::AlternateBase,   QColor(0x1e, 0x1e, 0x2e));
+    p.setColor(QPalette::ToolTipBase,     QColor(0x31, 0x32, 0x44));
+    p.setColor(QPalette::ToolTipText,     QColor(0xff, 0xff, 0xff));
+    p.setColor(QPalette::PlaceholderText, QColor(0x6e, 0x70, 0x80));
+
+    // Text roles
+    p.setColor(QPalette::Text,            QColor(0xff, 0xff, 0xff));
+    p.setColor(QPalette::BrightText,      QColor(0xff, 0xff, 0xff));
+
+    // Button roles
+    p.setColor(QPalette::Button,          QColor(0x45, 0x47, 0x5a));
+    p.setColor(QPalette::ButtonText,      QColor(0xff, 0xff, 0xff));
+
+    // Selection
+    p.setColor(QPalette::Highlight,       QColor(0x45, 0x47, 0x5a));
+    p.setColor(QPalette::HighlightedText, QColor(0xff, 0xff, 0xff));
+
+    // Links
+    p.setColor(QPalette::Link,            QColor(0xd4, 0xa5, 0x74));
+    p.setColor(QPalette::LinkVisited,     QColor(0xb0, 0x80, 0x50));
+
+    // Disabled state — dimmed text, same dark backgrounds
+    p.setColor(QPalette::Disabled, QPalette::WindowText,  QColor(0x6e, 0x70, 0x80));
+    p.setColor(QPalette::Disabled, QPalette::Text,        QColor(0x6e, 0x70, 0x80));
+    p.setColor(QPalette::Disabled, QPalette::ButtonText,  QColor(0x6e, 0x70, 0x80));
+    p.setColor(QPalette::Disabled, QPalette::Base,        QColor(0x2a, 0x2a, 0x3a));
+    p.setColor(QPalette::Disabled, QPalette::Button,      QColor(0x2a, 0x2a, 0x3a));
+    p.setColor(QPalette::Disabled, QPalette::Highlight,   QColor(0x31, 0x32, 0x44));
+
+    app.setPalette(p);
 }
 
 static void applyStylesheet(QApplication& app)
@@ -108,7 +152,10 @@ int main(int argc, char* argv[])
         spw::log::warn("Continuing without admin privileges — write operations will fail");
     }
 
-    // Apply stylesheet
+    // Apply dark palette first (catches system-rendered widgets like QProgressDialog,
+    // QMessageBox internals that ignore stylesheets on Windows), then apply
+    // the stylesheet on top for fine-grained visual control.
+    applyDarkPalette(app);
     applyStylesheet(app);
 
     // Show main window

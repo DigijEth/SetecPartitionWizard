@@ -6,6 +6,11 @@ set(UI_SOURCES
     tabs/DiagnosticsTab.cpp
     tabs/SecurityTab.cpp
     tabs/MaintenanceTab.cpp
+    tabs/SdCardTab.cpp
+    tabs/VirtualDiskTab.cpp
+    tabs/NonWindowsFsTab.cpp
+    tabs/LinuxFlasherTab.cpp
+    tabs/KaliCreatorTab.cpp
     widgets/DiskMapWidget.cpp
 )
 
@@ -17,6 +22,11 @@ set(UI_HEADERS
     tabs/DiagnosticsTab.h
     tabs/SecurityTab.h
     tabs/MaintenanceTab.h
+    tabs/SdCardTab.h
+    tabs/VirtualDiskTab.h
+    tabs/NonWindowsFsTab.h
+    tabs/LinuxFlasherTab.h
+    tabs/KaliCreatorTab.h
     widgets/DiskMapWidget.h
 )
 

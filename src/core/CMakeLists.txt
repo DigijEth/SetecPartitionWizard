@@ -35,10 +35,18 @@ set(CORE_SOURCES
     imaging/ImageCreator.cpp
     imaging/ImageRestorer.cpp
     imaging/IsoFlasher.cpp
+    imaging/VirtualDisk.cpp
+    imaging/Decompressor.cpp
+    imaging/ImageCatalog.cpp
+    imaging/SevenZipExtractor.cpp
+
+    # Networking
+    net/DownloadManager.cpp
 
     # Maintenance
     maintenance/SecureErase.cpp
     maintenance/SdCardRecovery.cpp
+    maintenance/SdCardAnalyzer.cpp
 
     # Security
     security/EncryptedVault.cpp
@@ -76,6 +84,11 @@ set(CORE_HEADERS
     imaging/ImageCreator.h
     imaging/ImageRestorer.h
     imaging/IsoFlasher.h
+    imaging/VirtualDisk.h
+    imaging/Decompressor.h
+    imaging/ImageCatalog.h
+    imaging/SevenZipExtractor.h
+    net/DownloadManager.h
     maintenance/SecureErase.h
     maintenance/SdCardRecovery.h
     security/EncryptedVault.h
@@ -83,7 +96,16 @@ set(CORE_HEADERS
     security/BootAuthenticator.h
 )
 
-add_library(spw_core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
+# xz-embedded (streaming XZ decompression)
+set(XZ_EMBEDDED_DIR "${CMAKE_SOURCE_DIR}/third_party/xz-embedded")
+set(XZ_EMBEDDED_SOURCES
+    ${XZ_EMBEDDED_DIR}/xz_crc32.c
+    ${XZ_EMBEDDED_DIR}/xz_crc64.c
+    ${XZ_EMBEDDED_DIR}/xz_dec_stream.c
+    ${XZ_EMBEDDED_DIR}/xz_dec_lzma2.c
+)
+
+add_library(spw_core STATIC ${CORE_SOURCES} ${CORE_HEADERS} ${XZ_EMBEDDED_SOURCES})
 
 # Depend on build-time key generation
 add_dependencies(spw_core generate_key)
@@ -93,8 +115,13 @@ target_include_directories(spw_core PUBLIC
     ${CMAKE_BINARY_DIR}/generated
 )
 
+target_include_directories(spw_core PRIVATE
+    ${XZ_EMBEDDED_DIR}
+)
+
 target_link_libraries(spw_core PUBLIC
     Qt6::Core
+    Qt6::Network
 )
 
 # Windows system libraries

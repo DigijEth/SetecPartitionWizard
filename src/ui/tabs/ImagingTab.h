@@ -39,6 +39,12 @@ private slots:
     void onBrowseRestoreInput();
     void onBrowseFlashInput();
     void onRestoreInputChanged();
+    void onOpticalRipDisc();
+    void onOpticalBurnImage();
+    void onOpticalErase();
+    void onOpticalBrowseBurnInput();
+    void onOpticalBrowseRipOutput();
+    void onOpticalRefreshDrives();
 
 private:
     void setupUi();
@@ -79,6 +85,30 @@ private:
     QPushButton* m_flashBtn = nullptr;
     QProgressBar* m_flashProgress = nullptr;
     QLabel* m_flashSpeedLabel = nullptr;
+
+    // Optical disc (CD/DVD/Blu-ray)
+    QComboBox*    m_opticalDriveCombo   = nullptr;
+    QPushButton*  m_opticalRefreshBtn   = nullptr;
+    QLabel*       m_opticalDriveInfo    = nullptr;
+    // Rip
+    QLineEdit*    m_ripOutputEdit       = nullptr;
+    QComboBox*    m_ripFormatCombo      = nullptr;
+    QCheckBox*    m_ripVerifyCheck      = nullptr;
+    QPushButton*  m_ripBtn              = nullptr;
+    QProgressBar* m_ripProgress         = nullptr;
+    QLabel*       m_ripStatusLabel      = nullptr;
+    // Burn
+    QLineEdit*    m_burnInputEdit       = nullptr;
+    QComboBox*    m_burnSpeedCombo      = nullptr;
+    QCheckBox*    m_burnVerifyCheck     = nullptr;
+    QCheckBox*    m_burnFinalizeCheck   = nullptr;
+    QPushButton*  m_burnBtn             = nullptr;
+    QProgressBar* m_burnProgress        = nullptr;
+    QLabel*       m_burnStatusLabel     = nullptr;
+    // Erase
+    QComboBox*    m_eraseTypeCombo      = nullptr;
+    QPushButton*  m_opticalEraseBtn     = nullptr;
+    QLabel*       m_eraseStatusLabel    = nullptr;
 
     // Data
     SystemDiskSnapshot m_snapshot;

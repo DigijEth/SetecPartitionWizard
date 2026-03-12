@@ -262,7 +262,6 @@ winget install bloodrock.pkg-config-lite
 | .NET SDK | `C:\Program Files\dotnet\` |
 | GitHub Desktop | `C:\Users\mdavi\AppData\Local\GitHubDesktop\` |
 | LM Studio | `C:\Users\mdavi\.lmstudio\bin\` |
-| Claude CLI | `C:\Users\mdavi\.local\bin\claude.exe` |
 | Metasploit | `C:\metasploit-framework\bin\` |
 
 ---

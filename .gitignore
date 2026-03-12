@@ -1,0 +1,11 @@
+build/
+.vs/
+.vscode/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.db
+*.opendb
+CMakeUserPresets.json
+compile_commands.json

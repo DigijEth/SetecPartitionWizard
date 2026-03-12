@@ -18,7 +18,7 @@ constexpr uint64_t DEFAULT_ALIGNMENT_SECTORS_512 = DEFAULT_ALIGNMENT_BYTES / SEC
 constexpr uint16_t MBR_SIGNATURE = 0xAA55;
 constexpr uint32_t MBR_SIZE = 512;
 constexpr int MBR_MAX_PRIMARY_PARTITIONS = 4;
-constexpr uint8_t MBR_PARTITION_ENTRY_OFFSET = 446;
+constexpr uint32_t MBR_PARTITION_ENTRY_OFFSET = 446;
 constexpr uint8_t MBR_PARTITION_ENTRY_SIZE = 16;
 
 // GPT constants
@@ -42,7 +42,7 @@ constexpr uint16_t HFSX_MAGIC = 0x4858;          // "HX"
 constexpr uint32_t APFS_MAGIC = 0x4253584E;      // "NXSB" (little-endian)
 constexpr uint16_t FAT_SIGNATURE = 0xAA55;
 constexpr uint32_t REFS_MAGIC = 0x53465265;      // "ReFS"
-constexpr uint16_t HPFS_SUPER_MAGIC = 0xF995E849;
+constexpr uint32_t HPFS_SUPER_MAGIC = 0xF995E849;
 constexpr uint16_t MINIX_SUPER_MAGIC = 0x137F;
 constexpr uint16_t MINIX2_SUPER_MAGIC = 0x2468;
 constexpr uint32_t UFS_MAGIC = 0x00011954;

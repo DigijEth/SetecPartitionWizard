@@ -121,6 +121,13 @@ enum class DiskInterfaceType
     Virtual,  // VHD, VHDX, etc.
 };
 
+// Access mode for opening raw disks or volumes
+enum class DiskAccessMode
+{
+    ReadOnly,
+    ReadWrite,
+};
+
 // Media types
 enum class MediaType
 {

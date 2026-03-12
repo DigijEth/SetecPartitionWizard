@@ -7,12 +7,19 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+# Platform defines — NOMINMAX prevents windows.h from defining min/max macros
+add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+
 # Find Qt6
 find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
 
 # CMake helpers
 include(cmake/CompilerWarnings.cmake)
 include(cmake/Version.cmake)
+include(cmake/GenerateKey.cmake)
+
+# Tests option (declared before third_party so FetchContent sees it)
+option(SPW_BUILD_TESTS "Build tests" ON)
 
 # Third-party dependencies
 add_subdirectory(third_party)
@@ -21,7 +28,6 @@ add_subdirectory(third_party)
 add_subdirectory(src)
 
 # Tests
-option(SPW_BUILD_TESTS "Build tests" ON)
 if(SPW_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

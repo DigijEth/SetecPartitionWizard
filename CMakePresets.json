@@ -1,11 +1,34 @@
 {
     "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 25,
+        "patch": 0
+    },
     "configurePresets": [
+        {
+            "name": "msvc-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.10.0/msvc2022_64",
+                "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe"
+            },
+            "environment": {
+                "MSVC_VER": "14.44.35207",
+                "WINSDK_VER": "10.0.26100.0",
+                "VCDIR": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/$env{MSVC_VER}",
+                "SDKDIR": "C:/Program Files (x86)/Windows Kits/10",
+                "PATH": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/$env{MSVC_VER}/bin/Hostx64/x64;C:/Program Files (x86)/Windows Kits/10/bin/$env{WINSDK_VER}/x64;C:/Qt/Tools/Ninja;C:/Program Files/CMake/bin;C:/Qt/6.10.0/msvc2022_64/bin;C:/Windows/System32;C:/Windows;C:/Program Files/Git/cmd;C:/Program Files/Git/usr/bin",
+                "INCLUDE": "$env{VCDIR}/include;$env{SDKDIR}/Include/$env{WINSDK_VER}/ucrt;$env{SDKDIR}/Include/$env{WINSDK_VER}/um;$env{SDKDIR}/Include/$env{WINSDK_VER}/shared;$env{SDKDIR}/Include/$env{WINSDK_VER}/winrt;$env{SDKDIR}/Include/$env{WINSDK_VER}/cppwinrt",
+                "LIB": "$env{VCDIR}/lib/x64;$env{SDKDIR}/Lib/$env{WINSDK_VER}/ucrt/x64;$env{SDKDIR}/Lib/$env{WINSDK_VER}/um/x64"
+            }
+        },
         {
             "name": "default",
             "displayName": "Default (Debug)",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
+            "inherits": "msvc-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
             }
@@ -13,8 +36,7 @@
         {
             "name": "release",
             "displayName": "Release",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
+            "inherits": "msvc-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
@@ -22,8 +44,7 @@
         {
             "name": "relwithdebinfo",
             "displayName": "Release with Debug Info",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
+            "inherits": "msvc-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
@@ -32,11 +53,29 @@
     "buildPresets": [
         {
             "name": "default",
-            "configurePreset": "default"
+            "configurePreset": "default",
+            "environment": {
+                "MSVC_VER": "14.44.35207",
+                "WINSDK_VER": "10.0.26100.0",
+                "VCDIR": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/14.44.35207",
+                "SDKDIR": "C:/Program Files (x86)/Windows Kits/10",
+                "PATH": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64;C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64;C:/Qt/Tools/Ninja;C:/Program Files/CMake/bin;C:/Qt/6.10.0/msvc2022_64/bin;C:/Windows/System32;C:/Windows;C:/Program Files/Git/cmd;C:/Program Files/Git/usr/bin",
+                "INCLUDE": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/14.44.35207/include;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/shared;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/winrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/cppwinrt",
+                "LIB": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/14.44.35207/lib/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64"
+            }
         },
         {
             "name": "release",
-            "configurePreset": "release"
+            "configurePreset": "release",
+            "environment": {
+                "MSVC_VER": "14.44.35207",
+                "WINSDK_VER": "10.0.26100.0",
+                "VCDIR": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/14.44.35207",
+                "SDKDIR": "C:/Program Files (x86)/Windows Kits/10",
+                "PATH": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64;C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64;C:/Qt/Tools/Ninja;C:/Program Files/CMake/bin;C:/Qt/6.10.0/msvc2022_64/bin;C:/Windows/System32;C:/Windows;C:/Program Files/Git/cmd;C:/Program Files/Git/usr/bin",
+                "INCLUDE": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/14.44.35207/include;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/shared;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/winrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/cppwinrt",
+                "LIB": "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/14.44.35207/lib/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64"
+            }
         }
     ],
     "testPresets": [

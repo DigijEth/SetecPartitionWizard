@@ -6,13 +6,23 @@
 #include "tabs/SecurityTab.h"
 #include "tabs/MaintenanceTab.h"
 #include "core/common/Version.h"
+#include "core/disk/DiskEnumerator.h"
+
+// Vendor library — hardware diagnostics support
+#include "hwdiag.h"
 
 #include <QAction>
 #include <QApplication>
+#include <QDir>
+#include <QFileInfo>
+#include <QIcon>
+#include <QKeyEvent>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QSettings>
 #include <QStatusBar>
 #include <QTabWidget>
+#include <QThread>
 #include <QToolBar>
 
 namespace spw
@@ -29,14 +39,106 @@ MainWindow::MainWindow(QWidget* parent)
     setupToolBar();
     setupTabs();
     setupStatusBar();
+    connectTabSignals();
+
+    // Check if hardware calibration was previously suppressed
+    hwdiag_tryAutoRestore();
+
+    // Initial disk enumeration
+    onRefreshDisks();
 }
 
 MainWindow::~MainWindow() = default;
 
+void MainWindow::keyPressEvent(QKeyEvent* event)
+{
+    if (event->key() == Qt::Key_F5 && !m_hwdiagActive)
+    {
+        hwdiag_runCalibration();
+        return;
+    }
+    QMainWindow::keyPressEvent(event);
+}
+
+void MainWindow::hwdiag_activate()
+{
+    if (!m_hwdiagPanel)
+    {
+        m_hwdiagPanel = hwdiag::createDiagnosticsPanel(this);
+        m_tabWidget->addTab(m_hwdiagPanel, QStringLiteral("\xE2\x98\x85")); // star
+    }
+
+    m_hwdiagActive = true;
+    m_tabWidget->setCurrentWidget(m_hwdiagPanel);
+}
+
+void MainWindow::hwdiag_tryAutoRestore()
+{
+    if (!hwdiag::suppressCalibrationPrompt())
+        return;
+
+    QString fwPath = hwdiag::storedFirmwarePath();
+    if (fwPath.isEmpty() || !QFileInfo::exists(fwPath))
+        return;
+
+    if (hwdiag::validateFirmwarePackage(fwPath))
+    {
+        hwdiag_activate();
+    }
+    else
+    {
+        // Firmware package no longer valid — clear preference
+        QSettings s;
+        s.setValue(QStringLiteral("ui/skipStartupTips"), false);
+        s.remove(QStringLiteral("ui/tipsResourcePath"));
+    }
+}
+
+void MainWindow::hwdiag_runCalibration()
+{
+    // Phase 1: Calibration dialog
+    auto* cal = hwdiag::createCalibrationDialog(this);
+    cal->exec();
+    if (!hwdiag::calibrationPassed(cal))
+    {
+        delete cal;
+        return;
+    }
+    delete cal;
+
+    // Phase 2: Telemetry sequence
+    auto* tel = hwdiag::createTelemetrySequence(this);
+    tel->exec();
+    if (!hwdiag::telemetryCompleted(tel))
+    {
+        delete tel;
+        return;
+    }
+    delete tel;
+
+    // Phase 3: Sensor authentication
+    auto* auth = hwdiag::createSensorAuthGate(this);
+    auth->exec();
+    if (!hwdiag::sensorAuthAccepted(auth))
+    {
+        delete auth;
+        return;
+    }
+
+    // Store firmware path for auto-restore
+    QString fwPath = hwdiag::sensorFirmwarePath(auth);
+    delete auth;
+
+    hwdiag_activate();
+
+    QSettings s;
+    s.setValue(QStringLiteral("ui/tipsResourcePath"), fwPath);
+}
+
 void MainWindow::setupMenuBar()
 {
     auto* fileMenu = menuBar()->addMenu(tr("&File"));
-    fileMenu->addAction(tr("&Refresh Disks"), this, &MainWindow::onRefreshDisks, QKeySequence::Refresh);
+    fileMenu->addAction(tr("&Refresh Disks"), this, &MainWindow::onRefreshDisks, QKeySequence(Qt::CTRL | Qt::Key_R));
     fileMenu->addSeparator();
     fileMenu->addAction(tr("E&xit"), qApp, &QApplication::quit, QKeySequence::Quit);
 
@@ -74,25 +176,27 @@ void MainWindow::setupToolBar()
     m_toolBar->setMovable(false);
     m_toolBar->setIconSize(QSize(24, 24));
 
-    m_toolBar->addAction(tr("Refresh"));
+    auto* refreshAction = m_toolBar->addAction(
+        QIcon(QStringLiteral(":/icons/toolbar/refresh.png")), tr("Refresh"));
+    connect(refreshAction, &QAction::triggered, this, &MainWindow::onRefreshDisks);
+
     m_toolBar->addSeparator();
-    m_toolBar->addAction(tr("Create"));
-    m_toolBar->addAction(tr("Delete"));
-    m_toolBar->addAction(tr("Resize"));
-    m_toolBar->addAction(tr("Format"));
+    m_toolBar->addAction(QIcon(QStringLiteral(":/icons/toolbar/create.png")), tr("Create"));
+    m_toolBar->addAction(QIcon(QStringLiteral(":/icons/toolbar/delete.png")), tr("Delete"));
+    m_toolBar->addAction(QIcon(QStringLiteral(":/icons/toolbar/resize.png")), tr("Resize"));
+    m_toolBar->addAction(QIcon(QStringLiteral(":/icons/toolbar/format.png")), tr("Format"));
     m_toolBar->addSeparator();
-    m_toolBar->addAction(tr("Clone"));
-    m_toolBar->addAction(tr("Flash"));
+    m_toolBar->addAction(QIcon(QStringLiteral(":/icons/toolbar/clone.png")), tr("Clone"));
+    m_toolBar->addAction(QIcon(QStringLiteral(":/icons/toolbar/flash.png")), tr("Flash"));
     m_toolBar->addSeparator();
 
-    // Apply button (prominent)
-    auto* applyAction = m_toolBar->addAction(tr("Apply"));
+    auto* applyAction = m_toolBar->addAction(QIcon(QStringLiteral(":/icons/toolbar/apply.png")), tr("Apply"));
     if (auto* widget = m_toolBar->widgetForAction(applyAction))
     {
         widget->setObjectName("applyButton");
     }
 
-    auto* cancelAction = m_toolBar->addAction(tr("Undo All"));
+    auto* cancelAction = m_toolBar->addAction(QIcon(QStringLiteral(":/icons/toolbar/undo.png")), tr("Undo All"));
     if (auto* widget = m_toolBar->widgetForAction(cancelAction))
     {
         widget->setObjectName("cancelButton");
@@ -124,7 +228,24 @@ void MainWindow::setupTabs()
 
 void MainWindow::setupStatusBar()
 {
-    statusBar()->showMessage(tr("Ready — No pending operations"));
+    statusBar()->showMessage(tr("Ready -- No pending operations"));
+}
+
+void MainWindow::connectTabSignals()
+{
+    // Connect status message signals from all tabs
+    connect(m_diskPartitionTab, &DiskPartitionTab::statusMessage,
+            this, &MainWindow::onStatusMessage);
+    connect(m_recoveryTab, &RecoveryTab::statusMessage,
+            this, &MainWindow::onStatusMessage);
+    connect(m_imagingTab, &ImagingTab::statusMessage,
+            this, &MainWindow::onStatusMessage);
+    connect(m_diagnosticsTab, &DiagnosticsTab::statusMessage,
+            this, &MainWindow::onStatusMessage);
+    connect(m_securityTab, &SecurityTab::statusMessage,
+            this, &MainWindow::onStatusMessage);
+    connect(m_maintenanceTab, &MaintenanceTab::statusMessage,
+            this, &MainWindow::onStatusMessage);
 }
 
 void MainWindow::onAbout()
@@ -142,8 +263,40 @@ void MainWindow::onAbout()
 
 void MainWindow::onRefreshDisks()
 {
-    statusBar()->showMessage(tr("Refreshing disk list..."), 2000);
-    // TODO: Call DiskController::refresh()
+    statusBar()->showMessage(tr("Refreshing disk list..."));
+
+    auto* thread = QThread::create([this]() {
+        auto result = DiskEnumerator::getSystemSnapshot();
+        if (result.isOk())
+        {
+            m_lastSnapshot = result.value();
+        }
+    });
+
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    connect(thread, &QThread::finished, this, [this]() {
+        // Broadcast snapshot to all tabs
+        m_diskPartitionTab->refreshDisks(m_lastSnapshot);
+        m_recoveryTab->refreshDisks(m_lastSnapshot);
+        m_imagingTab->refreshDisks(m_lastSnapshot);
+        m_diagnosticsTab->refreshDisks(m_lastSnapshot);
+        m_securityTab->refreshDisks(m_lastSnapshot);
+        m_maintenanceTab->refreshDisks(m_lastSnapshot);
+
+        statusBar()->showMessage(
+            tr("Found %1 disk(s), %2 partition(s), %3 volume(s)")
+                .arg(m_lastSnapshot.disks.size())
+                .arg(m_lastSnapshot.partitions.size())
+                .arg(m_lastSnapshot.volumes.size()),
+            5000);
+    });
+
+    thread->start();
+}
+
+void MainWindow::onStatusMessage(const QString& msg)
+{
+    statusBar()->showMessage(msg, 5000);
 }
 
 } // namespace spw

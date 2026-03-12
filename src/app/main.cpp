@@ -4,6 +4,7 @@
 #include "ui/MainWindow.h"
 
 #include <QApplication>
+#include <QDir>
 #include <QFile>
 #include <QMessageBox>
 #include <QStandardPaths>
@@ -11,6 +12,7 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#include <shellapi.h>
 #endif
 
 static bool isRunningAsAdmin()

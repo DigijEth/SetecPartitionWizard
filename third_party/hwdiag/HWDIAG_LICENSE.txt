@@ -1,0 +1,14 @@
+Hardware Diagnostics Support Library (libspw_hwdiag)
+====================================================
+
+Copyright (c) 2026 Setec Hardware Division
+All rights reserved.
+
+This library is provided as a pre-compiled binary for use with
+Setec Partition Wizard. Source code is not distributed.
+
+Redistribution and use in binary form is permitted provided that
+the above copyright notice and this permission notice appear in
+all copies of the software.
+
+THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.

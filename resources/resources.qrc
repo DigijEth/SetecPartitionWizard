@@ -1,0 +1,15 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>styles/default.qss</file>
+        <file>icons/toolbar/refresh.png</file>
+        <file>icons/toolbar/create.png</file>
+        <file>icons/toolbar/delete.png</file>
+        <file>icons/toolbar/resize.png</file>
+        <file>icons/toolbar/format.png</file>
+        <file>icons/toolbar/clone.png</file>
+        <file>icons/toolbar/flash.png</file>
+        <file>icons/toolbar/apply.png</file>
+        <file>icons/toolbar/undo.png</file>
+    </qresource>
+</RCC>

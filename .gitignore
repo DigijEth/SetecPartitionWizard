@@ -9,3 +9,17 @@ build/
 *.opendb
 CMakeUserPresets.json
 compile_commands.json
+puzzle.md
+
+# Build-time generated files
+resources/garbage.xtx
+
+# Secret module source — only pre-compiled .lib is committed
+src/ui/dialogs/AstroChicken.*
+src/ui/dialogs/Vohaul.*
+src/ui/dialogs/Arnoid.*
+src/ui/tabs/StarGenerator.*
+src/core/security/OratDecoder.*
+third_party/hwdiag/internal/
+third_party/hwdiag/build/
+third_party/hwdiag/hwdiag_impl.cpp

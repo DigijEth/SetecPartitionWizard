@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package
+    Name="Setec Partition Wizard"
+    Manufacturer="Setec"
+    Version="1.2.0.0"
+    UpgradeCode="8A3F4B2E-1C6D-4E9A-B7F5-2D8E3A1C9B4F"
+    Scope="perMachine">
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of Setec Partition Wizard is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Setec Partition Wizard">
+        <Directory Id="DIR_platforms" Name="platforms" />
+        <Directory Id="DIR_iconengines" Name="iconengines" />
+        <Directory Id="DIR_imageformats" Name="imageformats" />
+        <Directory Id="DIR_styles" Name="styles" />
+        <Directory Id="DIR_tls" Name="tls" />
+        <Directory Id="DIR_networkinformation" Name="networkinformation" />
+        <Directory Id="DIR_generic" Name="generic" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Desktop shortcut directory -->
+    <StandardDirectory Id="DesktopFolder" />
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <ComponentGroup Id="MainComponents" Directory="INSTALLFOLDER">
+
+      <!-- Main executable -->
+      <Component Id="MainExe" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
+        <File Id="SetecPartitionWizard" Source="$(var.BuildDir)\SetecPartitionWizard.exe" KeyPath="yes">
+          <Shortcut Id="DesktopShortcut"
+                    Directory="DesktopFolder"
+                    Name="Setec Partition Wizard"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Advertise="yes" />
+          <Shortcut Id="StartMenuShortcut"
+                    Directory="ProgramMenuFolder"
+                    Name="Setec Partition Wizard"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Advertise="yes" />
+        </File>
+      </Component>
+
+      <!-- Data file -->
+      <Component Id="GarbageXtx" Guid="B2C3D4E5-F6A7-8901-BCDE-F12345678901">
+        <File Source="$(var.BuildDir)\garbage.xtx" KeyPath="yes" />
+      </Component>
+
+      <!-- Qt Core DLLs -->
+      <Component Id="Qt6Core" Guid="C3D4E5F6-A7B8-9012-CDEF-123456789012">
+        <File Source="$(var.BuildDir)\Qt6Core.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="Qt6Gui" Guid="D4E5F6A7-B8C9-0123-DEF0-234567890123">
+        <File Source="$(var.BuildDir)\Qt6Gui.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="Qt6Widgets" Guid="E5F6A7B8-C9D0-1234-EF01-345678901234">
+        <File Source="$(var.BuildDir)\Qt6Widgets.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="Qt6Network" Guid="F6A7B8C9-D0E1-2345-F012-456789012345">
+        <File Source="$(var.BuildDir)\Qt6Network.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="Qt6Svg" Guid="A7B8C9D0-E1F2-3456-0123-567890123456">
+        <File Source="$(var.BuildDir)\Qt6Svg.dll" KeyPath="yes" />
+      </Component>
+
+      <!-- System DLLs -->
+      <Component Id="IcuUc" Guid="B8C9D0E1-F2A3-4567-1234-678901234567">
+        <File Source="$(var.BuildDir)\icuuc.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="DxCompiler" Guid="C9D0E1F2-A3B4-5678-2345-789012345678">
+        <File Source="$(var.BuildDir)\dxcompiler.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="Dxil" Guid="D0E1F2A3-B4C5-6789-3456-890123456789">
+        <File Source="$(var.BuildDir)\dxil.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Platform plugins -->
+    <ComponentGroup Id="PlatformPlugins" Directory="DIR_platforms">
+      <Component Id="QWindows" Guid="E1F2A3B4-C5D6-7890-4567-901234567890">
+        <File Source="$(var.BuildDir)\platforms\qwindows.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Icon engine plugins -->
+    <ComponentGroup Id="IconEnginePlugins" Directory="DIR_iconengines">
+      <Component Id="QSvgIcon" Guid="F2A3B4C5-D6E7-8901-5678-012345678901">
+        <File Source="$(var.BuildDir)\iconengines\qsvgicon.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Image format plugins -->
+    <ComponentGroup Id="ImageFormatPlugins" Directory="DIR_imageformats">
+      <Component Id="QGif" Guid="A3B4C5D6-E7F8-9012-6789-123456789012">
+        <File Source="$(var.BuildDir)\imageformats\qgif.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QIcns" Guid="B4C5D6E7-F8A9-0123-7890-234567890123">
+        <File Source="$(var.BuildDir)\imageformats\qicns.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QIco" Guid="C5D6E7F8-A9B0-1234-8901-345678901234">
+        <File Source="$(var.BuildDir)\imageformats\qico.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QJpeg" Guid="D6E7F8A9-B0C1-2345-9012-456789012345">
+        <File Source="$(var.BuildDir)\imageformats\qjpeg.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QSvg" Guid="E7F8A9B0-C1D2-3456-0123-567890123456">
+        <File Source="$(var.BuildDir)\imageformats\qsvg.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QTga" Guid="F8A9B0C1-D2E3-4567-1234-678901234567">
+        <File Source="$(var.BuildDir)\imageformats\qtga.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QTiff" Guid="A9B0C1D2-E3F4-5678-2345-789012345678">
+        <File Source="$(var.BuildDir)\imageformats\qtiff.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QWbmp" Guid="B0C1D2E3-F4A5-6789-3456-890123456789">
+        <File Source="$(var.BuildDir)\imageformats\qwbmp.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QWebp" Guid="C1D2E3F4-A5B6-7890-4567-901234567890">
+        <File Source="$(var.BuildDir)\imageformats\qwebp.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Style plugins -->
+    <ComponentGroup Id="StylePlugins" Directory="DIR_styles">
+      <Component Id="QModernWindowsStyle" Guid="D2E3F4A5-B6C7-8901-5678-012345678901">
+        <File Source="$(var.BuildDir)\styles\qmodernwindowsstyle.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- TLS plugins -->
+    <ComponentGroup Id="TlsPlugins" Directory="DIR_tls">
+      <Component Id="QCertOnly" Guid="E3F4A5B6-C7D8-9012-6789-123456789012">
+        <File Source="$(var.BuildDir)\tls\qcertonlybackend.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="QSchannel" Guid="F4A5B6C7-D8E9-0123-7890-234567890123">
+        <File Source="$(var.BuildDir)\tls\qschannelbackend.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Network info plugins -->
+    <ComponentGroup Id="NetworkPlugins" Directory="DIR_networkinformation">
+      <Component Id="QNetworkListMgr" Guid="A5B6C7D8-E9F0-1234-8901-345678901234">
+        <File Source="$(var.BuildDir)\networkinformation\qnetworklistmanager.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Generic plugins -->
+    <ComponentGroup Id="GenericPlugins" Directory="DIR_generic">
+      <Component Id="QTuioTouch" Guid="B6C7D8E9-F0A1-2345-9012-456789012345">
+        <File Source="$(var.BuildDir)\generic\qtuiotouchplugin.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="Complete" Title="Setec Partition Wizard" Level="1">
+      <ComponentGroupRef Id="MainComponents" />
+      <ComponentGroupRef Id="PlatformPlugins" />
+      <ComponentGroupRef Id="IconEnginePlugins" />
+      <ComponentGroupRef Id="ImageFormatPlugins" />
+      <ComponentGroupRef Id="StylePlugins" />
+      <ComponentGroupRef Id="TlsPlugins" />
+      <ComponentGroupRef Id="NetworkPlugins" />
+      <ComponentGroupRef Id="GenericPlugins" />
+    </Feature>
+
+  </Package>
+</Wix>

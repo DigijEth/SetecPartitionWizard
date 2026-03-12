@@ -94,9 +94,39 @@ enum class FilesystemType
     VFAT,           // Virtual FAT (long filename extension)
     UMSDOS,         // Unix on MS-DOS filesystem
 
+    // Flash-optimized
+    F2FS,           // Flash-Friendly File System (Samsung)
+    JFFS2,          // Journalling Flash File System v2
+    NILFS2,         // New Implementation of a Log-structured File System
+
+    // Console / gaming
+    FATX,           // Xbox / Xbox 360 filesystem
+    STFS,           // Xbox 360 Secure Transacted File System
+    GDFX,           // Xbox Game Disc Format (XDVDFS)
+    PS2MC,          // PS2 Memory Card filesystem
+
+    // Virtual disk images
+    VHD,            // Microsoft Virtual Hard Disk
+    VHDX,           // Microsoft Hyper-V Virtual Hard Disk
+    VMDK,           // VMware Virtual Machine Disk
+    QCOW2,          // QEMU Copy-On-Write v2
+    VDI,            // VirtualBox Disk Image
+
+    // Disc images / archives
+    RVZ,            // Dolphin Wii disc image
+    WUA,            // Cemu Wii U archive (ZArchive)
+    WBFs,           // Wii Backup File System
+    NRG,            // Nero disc image
+    MDF,            // Alcohol 120% disc image
+    CDI,            // DiscJuggler disc image
+
+    // Optical media
+    CDFS,           // CD-ROM File System (MSCDEX)
+
     // Network / special (read-only detection)
     NFS,
     SMB,
+    HDFS,           // Hadoop Distributed File System (marker only)
     SWAP_LINUX,
     SWAP_SOLARIS,
 

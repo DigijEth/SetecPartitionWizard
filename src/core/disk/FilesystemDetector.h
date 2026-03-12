@@ -85,6 +85,29 @@ private:
     static bool detectRomFs(const DiskReadCallback& readFunc, FilesystemDetection& out);
     static bool detectLinuxSwap(const DiskReadCallback& readFunc, FilesystemDetection& out, uint64_t volumeSize);
 
+    // Flash-optimized
+    static bool detectF2fs(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectJffs2(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectNilfs2(const DiskReadCallback& readFunc, FilesystemDetection& out);
+
+    // Console / gaming
+    static bool detectFatx(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectStfs(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectGdfx(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectPs2mc(const DiskReadCallback& readFunc, FilesystemDetection& out);
+
+    // Virtual disk images
+    static bool detectVhd(const DiskReadCallback& readFunc, FilesystemDetection& out, uint64_t volumeSize);
+    static bool detectVhdx(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectVmdk(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectQcow2(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectVdi(const DiskReadCallback& readFunc, FilesystemDetection& out);
+
+    // Disc images
+    static bool detectRvz(const DiskReadCallback& readFunc, FilesystemDetection& out);
+    static bool detectNrg(const DiskReadCallback& readFunc, FilesystemDetection& out, uint64_t volumeSize);
+    static bool detectWbfs(const DiskReadCallback& readFunc, FilesystemDetection& out);
+
     // Helper: safely read bytes through the callback, returning empty vector on failure
     static std::vector<uint8_t> safeRead(const DiskReadCallback& readFunc, uint64_t offset, uint32_t size);
 };

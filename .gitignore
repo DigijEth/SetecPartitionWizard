@@ -23,3 +23,8 @@ src/core/security/OratDecoder.*
 third_party/hwdiag/internal/
 third_party/hwdiag/build/
 third_party/hwdiag/hwdiag_impl.cpp
+SetecPartitionWizard-v1.0.0-debug-x64/
+third_party/hwdiag/build_release/
+third_party/hwdiag/build_rel/
+hwdiag_build.log
+*.zip

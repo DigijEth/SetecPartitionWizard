@@ -124,6 +124,29 @@ Result<FilesystemDetection> FilesystemDetector::detect(
     if (detectQnx4(readFunc, detection))         return detection;
     if (detectLinuxSwap(readFunc, detection, volumeSize)) return detection;
 
+    // Flash-optimized filesystems
+    if (detectF2fs(readFunc, detection))          return detection;
+    if (detectJffs2(readFunc, detection))         return detection;
+    if (detectNilfs2(readFunc, detection))        return detection;
+
+    // Console / gaming filesystems
+    if (detectFatx(readFunc, detection))          return detection;
+    if (detectStfs(readFunc, detection))          return detection;
+    if (detectGdfx(readFunc, detection))          return detection;
+    if (detectPs2mc(readFunc, detection))         return detection;
+
+    // Virtual disk images
+    if (detectVhdx(readFunc, detection))          return detection;
+    if (detectVmdk(readFunc, detection))          return detection;
+    if (detectQcow2(readFunc, detection))         return detection;
+    if (detectVdi(readFunc, detection))           return detection;
+    if (detectVhd(readFunc, detection, volumeSize)) return detection;
+
+    // Disc images
+    if (detectRvz(readFunc, detection))           return detection;
+    if (detectNrg(readFunc, detection, volumeSize)) return detection;
+    if (detectWbfs(readFunc, detection))          return detection;
+
     // FAT last because its detection is the most heuristic-dependent
     if (detectFat(readFunc, detection))           return detection;
 
@@ -1208,10 +1231,483 @@ const char* FilesystemDetector::filesystemName(FilesystemType type)
     case FilesystemType::SMB:           return "SMB";
     case FilesystemType::SWAP_LINUX:    return "Linux Swap";
     case FilesystemType::SWAP_SOLARIS:  return "Solaris Swap";
+    case FilesystemType::F2FS:          return "F2FS";
+    case FilesystemType::JFFS2:         return "JFFS2";
+    case FilesystemType::NILFS2:        return "NILFS2";
+    case FilesystemType::FATX:          return "FATX (Xbox)";
+    case FilesystemType::STFS:          return "STFS (Xbox 360)";
+    case FilesystemType::GDFX:          return "GDFX (Xbox Disc)";
+    case FilesystemType::PS2MC:         return "PS2 Memory Card";
+    case FilesystemType::VHD:           return "VHD";
+    case FilesystemType::VHDX:          return "VHDX";
+    case FilesystemType::VMDK:          return "VMDK";
+    case FilesystemType::QCOW2:        return "QCOW2";
+    case FilesystemType::VDI:           return "VDI";
+    case FilesystemType::RVZ:           return "RVZ (Wii)";
+    case FilesystemType::WUA:           return "WUA (Wii U)";
+    case FilesystemType::WBFs:          return "WBFS (Wii)";
+    case FilesystemType::NRG:           return "NRG (Nero)";
+    case FilesystemType::MDF:           return "MDF (Alcohol)";
+    case FilesystemType::CDI:           return "CDI (DiscJuggler)";
+    case FilesystemType::CDFS:          return "CDFS";
+    case FilesystemType::HDFS:          return "HDFS";
     case FilesystemType::Raw:           return "Raw";
     case FilesystemType::Unallocated:   return "Unallocated";
     }
     return "Unknown";
+}
+
+// ============================================================================
+// F2FS detection
+// Magic: 0xF2F52010 at offset 0x400 (1024)
+// ============================================================================
+
+bool FilesystemDetector::detectF2fs(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0x400, 128);
+    if (data.size() < 128) return false;
+
+    // F2FS magic at offset 0 of superblock (which is at partition offset 0x400)
+    uint32_t magic = readLE32(data.data());
+    if (magic != 0xF2F52010)
+        return false;
+
+    out.type = FilesystemType::F2FS;
+    out.description = "F2FS (Flash-Friendly File System)";
+
+    // Major/minor version at offset 4 and 6
+    uint16_t majorVer = readLE16(data.data() + 4);
+    uint16_t minorVer = readLE16(data.data() + 6);
+    (void)majorVer; (void)minorVer;
+
+    // log_blocksize at offset 38 (usually 12 = 4096 bytes)
+    uint32_t logBlocksize = readLE32(data.data() + 38);
+    if (logBlocksize >= 10 && logBlocksize <= 16)
+        out.blockSize = 1u << logBlocksize;
+
+    // Volume name at offset 0x6A0 - 0x400 = 0x2A0 from start of superblock, Unicode
+    // (need to read more data for that)
+    auto labelData = safeRead(readFunc, 0x400 + 0x2A0, 512);
+    if (labelData.size() >= 64)
+    {
+        std::string label;
+        for (size_t i = 0; i < 64; i += 2)
+        {
+            uint16_t ch = readLE16(labelData.data() + i);
+            if (ch == 0) break;
+            if (ch < 128) label += static_cast<char>(ch);
+        }
+        if (!label.empty())
+            out.label = label;
+    }
+
+    // UUID at offset 0x460 - 0x400 = 0x60 from superblock start
+    if (data.size() >= 0x70)
+    {
+        char uuid[48];
+        const uint8_t* u = data.data() + 0x60;
+        snprintf(uuid, sizeof(uuid),
+                 "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+                 u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7],
+                 u[8], u[9], u[10], u[11], u[12], u[13], u[14], u[15]);
+        out.uuid = uuid;
+    }
+
+    return true;
+}
+
+// ============================================================================
+// JFFS2 detection
+// Magic: 0x1985 (little-endian) or 0x8519 (big-endian) at offset 0
+// ============================================================================
+
+bool FilesystemDetector::detectJffs2(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 12);
+    if (data.size() < 12) return false;
+
+    uint16_t magic = readLE16(data.data());
+    if (magic != 0x1985 && magic != 0x8519)
+        return false;
+
+    // Validate node type (bits 0-15 of nodetype at offset 2)
+    uint16_t nodetype = readLE16(data.data() + 2);
+    // Strip high compatibility bits
+    uint16_t nodeBase = nodetype & 0x00FF;
+    // Valid JFFS2 node types: 1=DIRENT, 2=INODE, 3=CLEAN, 6=PADDING, 0xE0=SUMMARY
+    if (nodeBase != 0x01 && nodeBase != 0x02 && nodeBase != 0x03 &&
+        nodeBase != 0x06 && nodeBase != 0xE0)
+        return false;
+
+    out.type = FilesystemType::JFFS2;
+    out.description = "JFFS2 (Journalling Flash File System v2)";
+    return true;
+}
+
+// ============================================================================
+// NILFS2 detection
+// Magic: 0x3434 at offset 0x406 (superblock at 0x400, magic at +6)
+// ============================================================================
+
+bool FilesystemDetector::detectNilfs2(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0x400, 128);
+    if (data.size() < 128) return false;
+
+    // NILFS2 magic at offset 6 in the superblock
+    uint16_t magic = readLE16(data.data() + 6);
+    if (magic != 0x3434)
+        return false;
+
+    out.type = FilesystemType::NILFS2;
+    out.description = "NILFS2";
+
+    // Block size: stored as log2 at offset 0x0E
+    uint32_t logBlock = readLE32(data.data() + 0x0E);
+    if (logBlock >= 10 && logBlock <= 16)
+        out.blockSize = 1u << logBlock;
+
+    return true;
+}
+
+// ============================================================================
+// FATX detection (Xbox / Xbox 360)
+// Magic: "FATX" (0x58544146 LE or 0x46415458 BE) at partition start
+// ============================================================================
+
+bool FilesystemDetector::detectFatx(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 0x200);
+    if (data.size() < 0x200) return false;
+
+    // Check FATX magic (bytes "FATX" at offset 0)
+    if (!memEqual(data.data(), "FATX", 4))
+        return false;
+
+    // Validate SectorsPerCluster (must be power of 2, max 0x80)
+    uint32_t spc = readLE32(data.data() + 0x08);
+    if (!isPowerOf2(spc) || spc > 0x80)
+        return false;
+
+    out.type = FilesystemType::FATX;
+    out.description = "FATX (Xbox)";
+    out.blockSize = spc * 512;
+
+    // Volume name at offset 0x10 (up to 32 Unicode chars)
+    std::string label;
+    for (int i = 0; i < 32; ++i)
+    {
+        uint16_t ch = readLE16(data.data() + 0x10 + i * 2);
+        if (ch == 0 || ch == 0xFFFF) break;
+        if (ch < 128) label += static_cast<char>(ch);
+    }
+    if (!label.empty())
+        out.label = label;
+
+    return true;
+}
+
+// ============================================================================
+// STFS detection (Xbox 360 content packages)
+// Magic: "CON " (0x434F4E20), "LIVE" (0x4C495645), "PIRS" (0x50495253) at offset 0
+// ============================================================================
+
+bool FilesystemDetector::detectStfs(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 8);
+    if (data.size() < 4) return false;
+
+    uint32_t magic = readBE32(data.data());
+    if (magic != 0x434F4E20 && // "CON "
+        magic != 0x4C495645 && // "LIVE"
+        magic != 0x50495253)   // "PIRS"
+        return false;
+
+    out.type = FilesystemType::STFS;
+    out.description = "STFS (Xbox 360 Package)";
+    return true;
+}
+
+// ============================================================================
+// GDFX detection (Xbox Game Disc Format)
+// Magic: "MICROSOFT*XBOX*MEDIA" at various sector offsets
+// ============================================================================
+
+bool FilesystemDetector::detectGdfx(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    static const char kGdfxMagic[] = "MICROSOFT*XBOX*MEDIA";
+    constexpr size_t kMagicLen = 20;
+
+    // Check all known GDFX offsets
+    static const uint64_t offsets[] = {
+        0x10000,        // Raw XGD (SDK)
+        0x18310000,     // XGD1 (original Xbox)
+        0xFDA0000,      // XGD2
+        0x2090000,      // XGD3
+    };
+
+    for (auto off : offsets)
+    {
+        auto data = safeRead(readFunc, off, 32);
+        if (data.size() >= kMagicLen && memEqual(data.data(), kGdfxMagic, kMagicLen))
+        {
+            out.type = FilesystemType::GDFX;
+            out.description = "GDFX (Xbox Game Disc)";
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ============================================================================
+// PS2 Memory Card detection
+// Magic: "Sony PS2 Memory Card Format " at offset 0
+// ============================================================================
+
+bool FilesystemDetector::detectPs2mc(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 128);
+    if (data.size() < 40) return false;
+
+    // Check the first 28 bytes of the magic string
+    if (!memEqual(data.data(), "Sony PS2 Memory Card Format ", 28))
+        return false;
+
+    out.type = FilesystemType::PS2MC;
+    out.description = "PS2 Memory Card";
+
+    // Page size at offset 0x28 (uint16)
+    if (data.size() >= 0x2C)
+    {
+        uint16_t pageSize = readLE16(data.data() + 0x28);
+        uint16_t pagesPerCluster = readLE16(data.data() + 0x2A);
+        if (pageSize > 0 && pagesPerCluster > 0)
+            out.blockSize = pageSize * pagesPerCluster;
+    }
+
+    return true;
+}
+
+// ============================================================================
+// VHD detection (Microsoft Virtual Hard Disk)
+// Footer magic: "conectix" at last 512 bytes of file, or at offset 0 for fixed VHD
+// ============================================================================
+
+bool FilesystemDetector::detectVhd(const DiskReadCallback& readFunc, FilesystemDetection& out, uint64_t volumeSize)
+{
+    // VHD footer can be at offset 0 (dynamic/differencing) as a copy
+    auto data = safeRead(readFunc, 0, 512);
+    if (data.size() < 512) return false;
+
+    if (memEqual(data.data(), "conectix", 8))
+    {
+        out.type = FilesystemType::VHD;
+        out.description = "VHD (Virtual Hard Disk)";
+        return true;
+    }
+
+    // For fixed VHD, footer is at the very end — check if volumeSize is known
+    if (volumeSize >= 512)
+    {
+        auto footer = safeRead(readFunc, volumeSize - 512, 512);
+        if (footer.size() >= 8 && memEqual(footer.data(), "conectix", 8))
+        {
+            out.type = FilesystemType::VHD;
+            out.description = "VHD (Virtual Hard Disk)";
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ============================================================================
+// VHDX detection
+// Magic: "vhdxfile" at offset 0
+// ============================================================================
+
+bool FilesystemDetector::detectVhdx(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 16);
+    if (data.size() < 8) return false;
+
+    if (memEqual(data.data(), "vhdxfile", 8))
+    {
+        out.type = FilesystemType::VHDX;
+        out.description = "VHDX (Hyper-V Virtual Hard Disk)";
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================================
+// VMDK detection
+// Magic: "KDMV" (0x564D444B LE) for sparse extent, or "# Disk DescriptorFile" text
+// ============================================================================
+
+bool FilesystemDetector::detectVmdk(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 64);
+    if (data.size() < 4) return false;
+
+    // Sparse VMDK: magic "KDMV" at offset 0
+    uint32_t magic = readLE32(data.data());
+    if (magic == 0x564D444B) // "KDMV" LE
+    {
+        out.type = FilesystemType::VMDK;
+        out.description = "VMDK (VMware Virtual Disk)";
+        return true;
+    }
+
+    // Text descriptor VMDK
+    if (data.size() >= 21 && memEqual(data.data(), "# Disk DescriptorFile", 21))
+    {
+        out.type = FilesystemType::VMDK;
+        out.description = "VMDK (VMware Virtual Disk)";
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================================
+// QCOW2 detection
+// Magic: "QFI\xFB" (0x514649FB BE) at offset 0
+// ============================================================================
+
+bool FilesystemDetector::detectQcow2(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 16);
+    if (data.size() < 8) return false;
+
+    uint32_t magic = readBE32(data.data());
+    if (magic != 0x514649FB)
+        return false;
+
+    uint32_t version = readBE32(data.data() + 4);
+    if (version != 2 && version != 3)
+        return false;
+
+    out.type = FilesystemType::QCOW2;
+    out.description = (version == 3) ? "QCOW2 v3 (QEMU)" : "QCOW2 (QEMU)";
+    return true;
+}
+
+// ============================================================================
+// VDI detection (VirtualBox)
+// Magic: 0xBEDA107F at offset 0x40
+// ============================================================================
+
+bool FilesystemDetector::detectVdi(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 0x50);
+    if (data.size() < 0x48) return false;
+
+    // VDI signature at offset 0x40
+    uint32_t magic = readLE32(data.data() + 0x40);
+    if (magic != 0xBEDA107F)
+        return false;
+
+    out.type = FilesystemType::VDI;
+    out.description = "VDI (VirtualBox Disk Image)";
+
+    // Check for "<<< " image creation marker at offset 0
+    if (memEqual(data.data(), "\x7F\x10\xDA\xBE", 4) ||
+        memEqual(data.data() + 0x40, "\x7F\x10\xDA\xBE", 4))
+    {
+        // Already matched
+    }
+
+    return true;
+}
+
+// ============================================================================
+// RVZ detection (Dolphin Wii disc image)
+// Magic: 0x015A5652 LE ("RVZ\x01") at offset 0
+// Also WIA: 0x01414957 LE ("WIA\x01")
+// ============================================================================
+
+bool FilesystemDetector::detectRvz(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 8);
+    if (data.size() < 4) return false;
+
+    uint32_t magic = readLE32(data.data());
+    if (magic == 0x015A5652) // "RVZ\x01"
+    {
+        out.type = FilesystemType::RVZ;
+        out.description = "RVZ (Dolphin Wii Disc Image)";
+        return true;
+    }
+
+    // WIA format (predecessor to RVZ, same family)
+    if (magic == 0x01414957) // "WIA\x01"
+    {
+        out.type = FilesystemType::RVZ;
+        out.description = "WIA (Dolphin Wii Disc Image)";
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================================
+// NRG detection (Nero disc image)
+// Magic: "NER5" or "NERO" at end of file (footer-based)
+// ============================================================================
+
+bool FilesystemDetector::detectNrg(const DiskReadCallback& readFunc, FilesystemDetection& out, uint64_t volumeSize)
+{
+    if (volumeSize < 12)
+        return false;
+
+    // NRG v2: "NER5" at (filesize - 12)
+    auto footer = safeRead(readFunc, volumeSize - 12, 12);
+    if (footer.size() >= 4)
+    {
+        if (memEqual(footer.data(), "NER5", 4))
+        {
+            out.type = FilesystemType::NRG;
+            out.description = "NRG v2 (Nero Disc Image)";
+            return true;
+        }
+    }
+
+    // NRG v1: "NERO" at (filesize - 8)
+    footer = safeRead(readFunc, volumeSize - 8, 8);
+    if (footer.size() >= 4)
+    {
+        if (memEqual(footer.data(), "NERO", 4))
+        {
+            out.type = FilesystemType::NRG;
+            out.description = "NRG v1 (Nero Disc Image)";
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ============================================================================
+// WBFS detection (Wii Backup File System)
+// Magic: "WBFS" at offset 0
+// ============================================================================
+
+bool FilesystemDetector::detectWbfs(const DiskReadCallback& readFunc, FilesystemDetection& out)
+{
+    auto data = safeRead(readFunc, 0, 16);
+    if (data.size() < 4) return false;
+
+    if (memEqual(data.data(), "WBFS", 4))
+    {
+        out.type = FilesystemType::WBFs;
+        out.description = "WBFS (Wii Backup File System)";
+        return true;
+    }
+
+    return false;
 }
 
 } // namespace spw

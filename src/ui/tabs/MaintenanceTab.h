@@ -3,6 +3,7 @@
 #include "core/common/Types.h"
 #include "core/disk/DiskEnumerator.h"
 #include "core/maintenance/SecureErase.h"
+#include "core/maintenance/SdCardRecovery.h"
 
 #include <QWidget>
 #include <atomic>
@@ -40,6 +41,8 @@ private slots:
     void onRepairGpt();
     void onRepairBcd();
     void onReinstallBootloader();
+    void onSdScan();
+    void onSdFix();
 
 private:
     void setupUi();
@@ -64,6 +67,16 @@ private:
     QPushButton* m_bootloaderBtn = nullptr;
     QProgressBar* m_bootProgress = nullptr;
     QLabel* m_bootStatusLabel = nullptr;
+
+    // SD Card Recovery
+    QComboBox* m_sdCardCombo = nullptr;
+    QPushButton* m_sdScanBtn = nullptr;
+    QPushButton* m_sdFixBtn = nullptr;
+    QComboBox* m_sdFsCombo = nullptr;
+    QLineEdit* m_sdLabelEdit = nullptr;
+    QLabel* m_sdStatusLabel = nullptr;
+    QProgressBar* m_sdProgress = nullptr;
+    std::vector<SdCardInfo> m_detectedCards;
 
     // Data
     SystemDiskSnapshot m_snapshot;

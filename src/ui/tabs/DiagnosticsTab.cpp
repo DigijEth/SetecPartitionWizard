@@ -233,8 +233,8 @@ void DiagnosticsTab::displaySmartData(const SmartData& data)
     {
     case SmartStatus::OK:
         healthText = tr("PASSED - Healthy");
-        healthColor = QColor(0, 180, 0);
-        m_healthIcon->setStyleSheet("background-color: #00b400; border-radius: 24px;");
+        healthColor = QColor(212, 165, 116);
+        m_healthIcon->setStyleSheet("background-color: #d4a574; border-radius: 24px;");
         break;
     case SmartStatus::Warning:
         healthText = tr("WARNING - Issues Detected");
@@ -523,7 +523,7 @@ QColor DiagnosticsTab::smartStatusColor(SmartStatus status)
 {
     switch (status)
     {
-    case SmartStatus::OK:       return QColor(0, 180, 0);
+    case SmartStatus::OK:       return QColor(212, 165, 116);
     case SmartStatus::Warning:  return QColor(255, 180, 0);
     case SmartStatus::Critical: return QColor(255, 0, 0);
     default:                     return QColor(128, 128, 128);

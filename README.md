@@ -2,7 +2,7 @@
 
 **A free, open-source disk utility that does everything the paid tools do — without the monthly subscription.**
 
-Tired of Acronis, EaseUS, and Partition Magic charging you $50/year for basic disk operations? So were we. Setec Partition Wizard is a comprehensive C++17/Qt6 disk utility covering partition management, formatting, recovery, imaging, diagnostics, security, and maintenance — all in one tool, completely free.
+Tired of Acronis, EaseUS, and Partition Magic charging you $50/year for basic disk operations? So were we. Setec Partition Wizard is a comprehensive C++17/Qt6 disk utility covering partition management, formatting, recovery, imaging, diagnostics, security, maintenance, and SD card recovery — all in one tool, completely free.
 
 [![VirusTotal Scan](https://i.ibb.co/TdDKXWb/virustotal.jpg)](https://ibb.co/GNfswHt)
 
@@ -18,13 +18,34 @@ Tired of Acronis, EaseUS, and Partition Magic charging you $50/year for basic di
 - Raw partition table editing for advanced users
 
 ### Formatting — Every Filesystem You Can Think Of
-- **Modern:** NTFS, FAT32/16/12, exFAT, ReFS
-- **Linux:** ext2/3/4, Btrfs, XFS, JFS, ReiserFS, Linux swap
-- **Apple:** HFS+, APFS (read-only detection), HFS Classic
-- **Legacy & Retro:** HPFS (OS/2), Minix, Amiga Fast File System, BeOS BFS, QNX4, UFS (BSD), Xenix, Coherent, SysV, ADFS (Acorn), UDF, ISO9660
-- **Special:** RomFS, CramFS, SquashFS, VFAT, UMSDOS
 
-Yes, we support filesystems from the 1980s. Because why not.
+**Modern Windows:**
+NTFS, FAT32/16/12, exFAT, ReFS
+
+**Linux / Open Source:**
+ext2/3/4, Btrfs, XFS, ZFS, JFS, ReiserFS, Reiser4, F2FS, JFFS2, NILFS2, Linux swap
+
+**Apple:**
+HFS+, APFS (read-only detection), HFS Classic, MFS
+
+**Legacy & Retro (because why not):**
+HPFS (OS/2), Minix, Amiga Fast File System (AFFS/OFS), BeOS BFS, QNX4/6, UFS (BSD), FFS, Xenix, Coherent, SysV, VxFS, ADFS (Acorn), UDF, ISO9660, RomFS, CramFS, SquashFS, VFAT, UMSDOS
+
+**Console & Gaming:**
+FATX (Xbox / Xbox 360), STFS (Xbox 360 packages), GDFX (Xbox Game Disc), PS2 Memory Card
+
+**Virtual Disk Images:**
+VHD, VHDX (Hyper-V), VMDK (VMware), QCOW2 (QEMU), VDI (VirtualBox)
+
+**Disc & Archive Images:**
+RVZ/WIA (Dolphin Wii), WUA (Cemu Wii U), WBFS (Wii Backup), NRG (Nero), MDF (Alcohol 120%), CDI (DiscJuggler)
+
+### SD Card Recovery
+- **Detects SD/microSD cards Windows cannot see** — finds cards with corrupted partition tables, interrupted formats, and RAW/uninitialized media
+- Scans by bus type, removable flag, and model keywords — even finds cards with no partition table at all
+- **Full repair workflow:** clean partition table → reinitialize → format to FAT32/exFAT/NTFS
+- Auto-selects exFAT for cards over 32 GB
+- Uses raw IOCTL operations (`IOCTL_DISK_CREATE_DISK`, `IOCTL_DISK_SET_DRIVE_LAYOUT_EX`) to bypass Windows volume manager limitations
 
 ### Recovery
 - **Deleted partition recovery** — scans for lost MBR/GPT partition entries
@@ -56,6 +77,7 @@ Yes, we support filesystems from the 1980s. Because why not.
   - Gutmann 35-pass method
   - Random fill and custom byte patterns
 - **Boot repair** with MBR reconstruction and BCD rebuilding
+- **SD Card Recovery** — repair cards that Windows refuses to recognize
 
 ---
 
@@ -79,8 +101,13 @@ Yes, we support filesystems from the 1980s. Because why not.
 ## Building From Source
 
 ```bash
+# Debug build
 cmake --preset default
 cmake --build --preset default
+
+# Release build
+cmake --preset release
+cmake --build --preset release
 ```
 
 ### Build Requirements
@@ -106,7 +133,7 @@ src/
 │   ├── recovery/       # Partition recovery, file carving, boot repair
 │   ├── diagnostics/    # Benchmarks, surface scan
 │   ├── imaging/        # Disk cloner, image creator/restorer, ISO flasher
-│   ├── maintenance/    # Secure erase
+│   ├── maintenance/    # Secure erase, SD card recovery
 │   └── security/       # Encrypted vaults, FIDO2, boot auth
 ├── ui/                 # spw_ui static library (Qt Widgets)
 │   ├── MainWindow      # Tab container with visual disk map
@@ -122,6 +149,7 @@ src/
 - **Operation queue** — changes are queued, previewed, then applied atomically
 - **Removable-only safety** — ISO flasher refuses to write to fixed disks
 - **Admin required** — raw disk I/O requires elevation; app checks and prompts
+- **SD card recovery uses raw IOCTLs** — bypasses volume manager to reach cards Windows won't mount
 
 ---
 
@@ -129,7 +157,9 @@ src/
 
 > *"Don't forget to look UP UP at space."*
 
-Some say if you press **F5** while the application is running, something unexpected happens. Something involving a riddle about nothing, a dark void, and a very particular file that only your build can produce.
+Press **F5** while the application is running. Something unexpected happens.
+
+A riddle. A dark void. And a very particular file that ships with every build — one that looks like garbage in a hex editor, but says something in a text editor. Find it. Read it. Then find the file that only *your* build can produce.
 
 Those who grew up cleaning floors on the SCS Deepship 86 might feel right at home. The janitor always did have a knack for finding hidden things.
 

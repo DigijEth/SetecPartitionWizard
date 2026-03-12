@@ -38,6 +38,7 @@ set(CORE_SOURCES
 
     # Maintenance
     maintenance/SecureErase.cpp
+    maintenance/SdCardRecovery.cpp
 
     # Security
     security/EncryptedVault.cpp
@@ -76,6 +77,7 @@ set(CORE_HEADERS
     imaging/ImageRestorer.h
     imaging/IsoFlasher.h
     maintenance/SecureErase.h
+    maintenance/SdCardRecovery.h
     security/EncryptedVault.h
     security/Fido2Manager.h
     security/BootAuthenticator.h

@@ -24,6 +24,14 @@ target_link_libraries(SetecPartitionWizard PRIVATE
     spw_ui
 )
 
+# Copy garbage.xtx to build output directory
+add_custom_command(TARGET SetecPartitionWizard POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/resources/garbage.xtx"
+        "$<TARGET_FILE_DIR:SetecPartitionWizard>/garbage.xtx"
+    COMMENT "Copying garbage.xtx to build directory..."
+)
+
 # Deploy Qt DLLs on install
 include(${CMAKE_SOURCE_DIR}/cmake/QtDeployHelper.cmake)
 spw_deploy_qt(SetecPartitionWizard)

@@ -291,10 +291,10 @@ QColor DiskMapWidget::colorForFilesystem(FilesystemType fs)
     switch (fs)
     {
     case FilesystemType::NTFS:       return QColor(52, 101, 164);
-    case FilesystemType::FAT32:      return QColor(78, 154, 6);
-    case FilesystemType::FAT16:      return QColor(78, 154, 6);
-    case FilesystemType::FAT12:      return QColor(78, 154, 6);
-    case FilesystemType::ExFAT:      return QColor(115, 210, 22);
+    case FilesystemType::FAT32:      return QColor(180, 145, 120);
+    case FilesystemType::FAT16:      return QColor(180, 145, 120);
+    case FilesystemType::FAT12:      return QColor(180, 145, 120);
+    case FilesystemType::ExFAT:      return QColor(212, 165, 116);
     case FilesystemType::ReFS:       return QColor(32, 74, 135);
     case FilesystemType::Ext2:       return QColor(204, 0, 0);
     case FilesystemType::Ext3:       return QColor(204, 0, 0);
@@ -307,6 +307,29 @@ QColor DiskMapWidget::colorForFilesystem(FilesystemType fs)
     case FilesystemType::ISO9660:    return QColor(85, 87, 83);
     case FilesystemType::UDF:        return QColor(85, 87, 83);
     case FilesystemType::Unallocated: return QColor(80, 80, 80);
+    // Flash-optimized
+    case FilesystemType::F2FS:       return QColor(0, 150, 136);   // Teal
+    case FilesystemType::JFFS2:      return QColor(121, 85, 72);   // Brown
+    case FilesystemType::NILFS2:     return QColor(158, 157, 36);  // Lime
+    // Console / gaming
+    case FilesystemType::FATX:       return QColor(76, 175, 80);   // Xbox green
+    case FilesystemType::STFS:       return QColor(56, 142, 60);   // Xbox dark green
+    case FilesystemType::GDFX:       return QColor(46, 125, 50);   // Xbox disc green
+    case FilesystemType::PS2MC:      return QColor(33, 150, 243);  // PS blue
+    // Virtual disk images
+    case FilesystemType::VHD:        return QColor(0, 120, 215);   // Windows blue
+    case FilesystemType::VHDX:       return QColor(0, 99, 177);
+    case FilesystemType::VMDK:       return QColor(120, 144, 156); // Slate
+    case FilesystemType::QCOW2:      return QColor(255, 87, 34);   // Deep orange
+    case FilesystemType::VDI:        return QColor(63, 81, 181);   // Indigo
+    // Disc images
+    case FilesystemType::RVZ:        return QColor(156, 39, 176);  // Purple
+    case FilesystemType::WUA:        return QColor(103, 58, 183);  // Deep purple
+    case FilesystemType::WBFs:       return QColor(0, 188, 212);   // Cyan
+    case FilesystemType::NRG:        return QColor(96, 125, 139);  // Blue grey
+    case FilesystemType::MDF:        return QColor(96, 125, 139);
+    case FilesystemType::CDI:        return QColor(96, 125, 139);
+    case FilesystemType::CDFS:       return QColor(85, 87, 83);
     default:                          return QColor(136, 138, 133);
     }
 }
@@ -332,6 +355,25 @@ QString DiskMapWidget::filesystemShortName(FilesystemType fs)
     case FilesystemType::SWAP_LINUX:   return QStringLiteral("Swap");
     case FilesystemType::ISO9660:      return QStringLiteral("ISO9660");
     case FilesystemType::UDF:          return QStringLiteral("UDF");
+    case FilesystemType::F2FS:         return QStringLiteral("F2FS");
+    case FilesystemType::JFFS2:        return QStringLiteral("JFFS2");
+    case FilesystemType::NILFS2:       return QStringLiteral("NILFS2");
+    case FilesystemType::FATX:         return QStringLiteral("FATX");
+    case FilesystemType::STFS:         return QStringLiteral("STFS");
+    case FilesystemType::GDFX:         return QStringLiteral("GDFX");
+    case FilesystemType::PS2MC:        return QStringLiteral("PS2MC");
+    case FilesystemType::VHD:          return QStringLiteral("VHD");
+    case FilesystemType::VHDX:         return QStringLiteral("VHDX");
+    case FilesystemType::VMDK:         return QStringLiteral("VMDK");
+    case FilesystemType::QCOW2:        return QStringLiteral("QCOW2");
+    case FilesystemType::VDI:          return QStringLiteral("VDI");
+    case FilesystemType::RVZ:          return QStringLiteral("RVZ");
+    case FilesystemType::WUA:          return QStringLiteral("WUA");
+    case FilesystemType::WBFs:         return QStringLiteral("WBFS");
+    case FilesystemType::NRG:          return QStringLiteral("NRG");
+    case FilesystemType::MDF:          return QStringLiteral("MDF");
+    case FilesystemType::CDI:          return QStringLiteral("CDI");
+    case FilesystemType::CDFS:         return QStringLiteral("CDFS");
     case FilesystemType::Unallocated:  return QStringLiteral("Free");
     case FilesystemType::Unknown:      return QStringLiteral("Unknown");
     case FilesystemType::Raw:          return QStringLiteral("RAW");

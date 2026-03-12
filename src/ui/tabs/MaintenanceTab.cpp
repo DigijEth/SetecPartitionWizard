@@ -3,6 +3,7 @@
 #include "core/disk/DiskEnumerator.h"
 #include "core/disk/RawDiskHandle.h"
 #include "core/maintenance/SecureErase.h"
+#include "core/maintenance/SdCardRecovery.h"
 #include "core/recovery/BootRepair.h"
 
 #include <QCheckBox>
@@ -137,6 +138,60 @@ void MaintenanceTab::setupUi()
     bootLayout->addWidget(m_bootStatusLabel);
 
     layout->addWidget(bootGroup);
+
+    // ===== SD Card Recovery Section =====
+    auto* sdGroup = new QGroupBox(tr("SD Card Recovery"));
+    auto* sdLayout = new QGridLayout(sdGroup);
+
+    auto* sdInfo = new QLabel(
+        tr("Detect and fix SD/microSD cards that Windows cannot see.\n"
+           "Repairs corrupted partition tables from interrupted formats, "
+           "RAW cards, and uninitialized media."));
+    sdInfo->setWordWrap(true);
+    sdLayout->addWidget(sdInfo, 0, 0, 1, 3);
+
+    m_sdScanBtn = new QPushButton(tr("Scan for SD Cards"));
+    m_sdScanBtn->setToolTip(tr("Scan all disk interfaces for SD/MMC cards, including invisible ones"));
+    connect(m_sdScanBtn, &QPushButton::clicked, this, &MaintenanceTab::onSdScan);
+    sdLayout->addWidget(m_sdScanBtn, 1, 0);
+
+    m_sdCardCombo = new QComboBox();
+    sdLayout->addWidget(m_sdCardCombo, 1, 1, 1, 2);
+
+    sdLayout->addWidget(new QLabel(tr("Format As:")), 2, 0);
+    m_sdFsCombo = new QComboBox();
+    m_sdFsCombo->addItems({
+        tr("FAT32 (recommended for <= 32 GB)"),
+        tr("exFAT (recommended for > 32 GB)"),
+        tr("NTFS")
+    });
+    sdLayout->addWidget(m_sdFsCombo, 2, 1, 1, 2);
+
+    sdLayout->addWidget(new QLabel(tr("Volume Label:")), 3, 0);
+    m_sdLabelEdit = new QLineEdit(QStringLiteral("SD_CARD"));
+    m_sdLabelEdit->setMaxLength(11);
+    sdLayout->addWidget(m_sdLabelEdit, 3, 1, 1, 2);
+
+    m_sdFixBtn = new QPushButton(tr("Fix SD Card"));
+    m_sdFixBtn->setMinimumHeight(40);
+    m_sdFixBtn->setStyleSheet(
+        "QPushButton { background-color: #d4a574; color: #1e1e2e; font-size: 14px; "
+        "font-weight: bold; border: 2px solid #b08050; border-radius: 6px; }"
+        "QPushButton:hover { background-color: #e0b584; }"
+        "QPushButton:pressed { background-color: #c49060; }");
+    m_sdFixBtn->setEnabled(false);
+    connect(m_sdFixBtn, &QPushButton::clicked, this, &MaintenanceTab::onSdFix);
+    sdLayout->addWidget(m_sdFixBtn, 4, 0, 1, 3);
+
+    m_sdProgress = new QProgressBar();
+    m_sdProgress->setVisible(false);
+    sdLayout->addWidget(m_sdProgress, 5, 0, 1, 3);
+
+    m_sdStatusLabel = new QLabel();
+    m_sdStatusLabel->setWordWrap(true);
+    sdLayout->addWidget(m_sdStatusLabel, 6, 0, 1, 3);
+
+    layout->addWidget(sdGroup);
     layout->addStretch();
 }
 
@@ -460,6 +515,149 @@ void MaintenanceTab::onReinstallBootloader()
     connect(thread, &QThread::finished, this, [this]() {
         m_bootProgress->setVisible(false);
         emit statusMessage(tr("Bootloader reinstall completed"));
+    });
+
+    thread->start();
+}
+
+void MaintenanceTab::onSdScan()
+{
+    m_sdScanBtn->setEnabled(false);
+    m_sdStatusLabel->setText(tr("Scanning for SD cards..."));
+    m_sdCardCombo->clear();
+    m_detectedCards.clear();
+    m_sdFixBtn->setEnabled(false);
+
+    auto* thread = QThread::create([this]() {
+        auto result = SdCardRecovery::detectSdCards();
+        if (result.isError())
+        {
+            QMetaObject::invokeMethod(m_sdStatusLabel, "setText",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QString, tr("Scan failed: %1")
+                                                         .arg(QString::fromStdString(result.error().message))));
+            return;
+        }
+        m_detectedCards = std::move(result.value());
+    });
+
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    connect(thread, &QThread::finished, this, [this]() {
+        m_sdScanBtn->setEnabled(true);
+
+        if (m_detectedCards.empty())
+        {
+            m_sdStatusLabel->setText(
+                tr("No SD/MMC cards detected.\n"
+                   "Make sure the card is inserted in a reader and the reader is connected."));
+            return;
+        }
+
+        for (const auto& card : m_detectedCards)
+        {
+            QString statusStr;
+            switch (card.status)
+            {
+            case SdCardStatus::Healthy:          statusStr = tr("Healthy"); break;
+            case SdCardStatus::NoPartitionTable:  statusStr = tr("NO PARTITION TABLE"); break;
+            case SdCardStatus::CorruptPartition:  statusStr = tr("CORRUPT"); break;
+            case SdCardStatus::RawFilesystem:     statusStr = tr("RAW"); break;
+            case SdCardStatus::NoMedia:           statusStr = tr("No Media"); break;
+            default:                              statusStr = tr("Unknown"); break;
+            }
+
+            QString label = QString("Disk %1: %2 (%3) [%4]")
+                                .arg(card.diskId)
+                                .arg(QString::fromStdWString(card.model))
+                                .arg(formatSize(card.sizeBytes))
+                                .arg(statusStr);
+            m_sdCardCombo->addItem(label, card.diskId);
+        }
+
+        m_sdFixBtn->setEnabled(true);
+        m_sdStatusLabel->setText(
+            tr("Found %1 SD card(s). Select one and click Fix to repair.")
+                .arg(m_detectedCards.size()));
+
+        emit statusMessage(tr("SD card scan complete — %1 card(s) found")
+                               .arg(m_detectedCards.size()));
+    });
+
+    thread->start();
+}
+
+void MaintenanceTab::onSdFix()
+{
+    int diskId = m_sdCardCombo->currentData().toInt();
+
+    // Find the card info
+    const SdCardInfo* cardInfo = nullptr;
+    for (const auto& card : m_detectedCards)
+    {
+        if (card.diskId == diskId)
+        {
+            cardInfo = &card;
+            break;
+        }
+    }
+    if (!cardInfo)
+        return;
+
+    // Confirmation
+    auto reply = QMessageBox::warning(this, tr("Fix SD Card"),
+                                       tr("This will ERASE ALL DATA on:\n\n"
+                                          "Disk %1: %2 (%3)\n\n"
+                                          "The card will be cleaned, repartitioned, and formatted.\n\n"
+                                          "Continue?")
+                                           .arg(diskId)
+                                           .arg(QString::fromStdWString(cardInfo->model))
+                                           .arg(formatSize(cardInfo->sizeBytes)),
+                                       QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes)
+        return;
+
+    // Build config
+    SdFixConfig config;
+    config.action = SdFixAction::CleanAndFormat;
+    switch (m_sdFsCombo->currentIndex())
+    {
+    case 0: config.targetFs = FilesystemType::FAT32; break;
+    case 1: config.targetFs = FilesystemType::ExFAT; break;
+    case 2: config.targetFs = FilesystemType::NTFS; break;
+    }
+    config.volumeLabel = m_sdLabelEdit->text().toStdWString();
+
+    m_sdFixBtn->setEnabled(false);
+    m_sdScanBtn->setEnabled(false);
+    m_sdProgress->setVisible(true);
+    m_sdProgress->setValue(0);
+    m_sdStatusLabel->setText(tr("Fixing SD card..."));
+
+    auto* thread = QThread::create([this, diskId, config]() {
+        auto result = SdCardRecovery::fixCard(diskId, config,
+            [this](const std::string& stage, int pct) {
+                QMetaObject::invokeMethod(m_sdProgress, "setValue",
+                                          Qt::QueuedConnection, Q_ARG(int, pct));
+                QMetaObject::invokeMethod(m_sdStatusLabel, "setText",
+                                          Qt::QueuedConnection,
+                                          Q_ARG(QString, QString::fromStdString(stage)));
+            });
+
+        if (result.isError())
+        {
+            QMetaObject::invokeMethod(m_sdStatusLabel, "setText",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QString, tr("Fix failed: %1")
+                                                         .arg(QString::fromStdString(result.error().message))));
+        }
+    });
+
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    connect(thread, &QThread::finished, this, [this]() {
+        m_sdProgress->setVisible(false);
+        m_sdFixBtn->setEnabled(true);
+        m_sdScanBtn->setEnabled(true);
+        emit statusMessage(tr("SD card fix completed"));
     });
 
     thread->start();
